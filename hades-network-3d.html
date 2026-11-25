@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Esholt PST effluent line – Hades model explained in 3D</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;font-family:"Segoe UI",system-ui,sans-serif;background:#0d141e;color:#e4ebf4}
+  #app{position:fixed;inset:0}
+  #side{position:fixed;left:0;top:0;bottom:0;width:370px;background:rgba(13,20,30,.95);border-right:1px solid #24334a;display:flex;flex-direction:column;z-index:5}
+  #side header{padding:14px 16px 8px;border-bottom:1px solid #24334a}
+  #side h1{font-size:16px;margin:0 0 4px}
+  #side .sub{font-size:12px;color:#93a4bb}
+  #nav{display:flex;flex-wrap:wrap;gap:4px;padding:10px 16px;border-bottom:1px solid #24334a}
+  #nav button{font-size:11px;padding:4px 7px;border-radius:4px;border:1px solid #33465f;background:#16212f;color:#c9d6e6;cursor:pointer}
+  #nav button.on{background:#2d6cdf;border-color:#2d6cdf;color:#fff}
+  #content{flex:1;overflow:auto;padding:12px 16px;font-size:13px;line-height:1.5}
+  #content h2{font-size:15px;margin:2px 0 8px;color:#fff}
+  #content ul{padding-left:18px;margin:6px 0}
+  #content li{margin:3px 0}
+  #content .k{color:#7fc4ff}
+  #content table{border-collapse:collapse;width:100%;font-size:12px;margin:6px 0}
+  #content td,#content th{border:1px solid #2a3a50;padding:3px 5px;text-align:left}
+  #content th{background:#182435}
+  #content .btns{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}
+  #content .btns button{font-size:11px;padding:4px 8px;border-radius:4px;border:1px solid #3a5272;background:#1a2738;color:#dbe6f3;cursor:pointer}
+  #content .btns button:hover{background:#244064}
+  #content .note{font-size:11.5px;color:#93a4bb;border-left:3px solid #33465f;padding-left:8px;margin:8px 0}
+  #pager{display:flex;justify-content:space-between;padding:10px 16px;border-top:1px solid #24334a}
+  #pager button{padding:6px 14px;border-radius:4px;border:1px solid #3a5272;background:#1a2738;color:#fff;cursor:pointer}
+  #top{position:fixed;top:10px;right:12px;z-index:6;background:rgba(13,20,30,.92);border:1px solid #24334a;border-radius:8px;padding:8px 10px;font-size:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:calc(100vw - 420px)}
+  #top select,#top label{font-size:12px}
+  #top select{background:#16212f;color:#e4ebf4;border:1px solid #33465f;border-radius:4px;padding:3px}
+  #info{position:fixed;right:12px;bottom:12px;width:330px;max-height:55vh;overflow:auto;z-index:6;background:rgba(13,20,30,.95);border:1px solid #2d6cdf;border-radius:8px;padding:10px 12px;font-size:12.5px;display:none}
+  #info h3{margin:0 0 2px;font-size:14px}
+  #info .t{font-size:11px;color:#93a4bb;margin-bottom:6px}
+  #info table{width:100%;border-collapse:collapse}
+  #info td{padding:2px 4px;border-bottom:1px solid #1f2c3e;vertical-align:top}
+  #info td:first-child{color:#93a4bb;width:48%}
+  #info .x{position:absolute;right:8px;top:6px;cursor:pointer;color:#93a4bb}
+  #legend{position:fixed;left:384px;bottom:12px;z-index:6;background:rgba(13,20,30,.9);border:1px solid #24334a;border-radius:8px;padding:7px 10px;font-size:11.5px;line-height:1.7}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  .label{font-size:10.5px;padding:1px 5px;background:rgba(10,16,26,.82);border:1px solid #3a4d6a;border-radius:4px;color:#dfe8f3;white-space:nowrap;cursor:pointer;pointer-events:auto}
+  .label.prop{border-color:#e0a54a;color:#ffd79a}
+  .label.big{font-size:12px;font-weight:600}
+  .badge{display:inline-block;padding:0 5px;border-radius:3px;font-weight:600;color:#0d141e}
+  #hint{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:4;font-size:11.5px;color:#93a4bb;margin-left:185px}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="app"></div>
+<aside id="side">
+  <header>
+    <h1>Esholt PST effluent line: Hades model</h1>
+    <div class="sub">PST No. 7 hydraulic assessment, explained section by section. The plan is schematic and not to scale. Levels are true, with vertical exaggeration ×2.5.</div>
+  </header>
+  <div id="nav"></div>
+  <div id="content"></div>
+  <div id="pager"><button id="prev">◀ Back</button><button id="next">Next ▶</button></div>
+</aside>
+<div id="top">
+  <label>RAS split (upstream/downstream of selector)
+    <select id="split">
+      <option value="base">Baseline: 6 PSTs, RAS 2450, 30/70</option>
+      <option value="30/70">30 / 70 (historical)</option>
+      <option value="40/60" selected>40 / 60 (current, SCADA)</option>
+      <option value="50/50">50 / 50 (highest, PFD)</option>
+    </select></label>
+  <label>RAS rate <select id="ras"><option value="2600">2600 l/s (Stantec)</option><option value="2800">2800 l/s (YW)</option></select></label>
+  <label><input type="checkbox" id="lbl" checked> Labels</label>
+  <label><input type="checkbox" id="flow" checked> Flow</label>
+  <label><input type="checkbox" id="hgl" checked> Water level line</label>
+</div>
+<div id="hint">Drag to rotate · right-drag to pan · scroll to zoom · click any part for its data</div>
+<div id="info"><span class="x" id="infox">✕</span><div id="infobody"></div></div>
+<div id="legend">
+  <div><span class="sw" style="background:#3ecf72"></span>Enough freeboard (more than 500 mm to MH coping; more than 100 mm to PST weir)</div>
+  <div><span class="sw" style="background:#e04fd0"></span>Not enough freeboard, but no spill</div>
+  <div><span class="sw" style="background:#ff4d4d"></span>Predicted to spill or flood</div>
+  <div><span class="sw" style="background:#e0a54a"></span>Proposed asset (*)&nbsp;&nbsp;<span class="sw" style="background:#3fa9f5"></span>Water / HGL</div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {CSS2DRenderer, CSS2DObject} from 'three/addons/renderers/CSS2DRenderer.js';
+
+// ---------- scales ----------
+const VE = 2.5, DATUM = 53;
+const Y = l => (l - DATUM) * VE;
+const V = (x, l, z) => new THREE.Vector3(x, Y(l), z);
+
+// ---------- results data (from report tables) ----------
+// order: PST7 weir, MH7/A, MH7/B, MH7/C, MH7, PST6 weir, MH6/A, MH6, MH5, MH4, MH3, MH2, MH1, MH0, ASP SS Cm 1
+const RES_ID = ['PST7','MH7A','MH7B','MH7C','MH7','PST6','MH6A','MH6','MH5','MH4','MH3','MH2','MH1','MH0','SSCM1'];
+const KEY = [65.215,65.150,65.025,65.000,65.025,65.215,65.025,64.700,64.700,64.700,64.500,64.300,64.000,64.000,62.350];
+const RES = {
+  'base':      [null,null,null,null,null,64.978,64.287,64.208,64.105,64.035,63.926,63.785,63.559,63.246,62.202],
+  '30/70-2600':[65.022,64.817,64.796,64.799,64.777,65.028,64.825,64.757,64.669,64.506,64.327,64.132,63.847,63.473,62.265],
+  '30/70-2800':[65.037,64.838,64.817,64.820,64.798,65.043,64.846,64.779,64.690,64.527,64.348,64.153,63.868,63.494,62.286],
+  '40/60-2600':[65.066,64.876,64.856,64.858,64.836,65.073,64.885,64.817,64.728,64.565,64.387,64.192,63.907,63.532,62.324],
+  '40/60-2800':[65.089,64.903,64.883,64.885,64.863,65.096,64.912,64.844,64.755,64.592,64.414,64.219,63.934,63.559,62.351],
+  '50/50-2600':[65.119,64.939,64.919,64.921,64.899,65.127,64.948,64.880,64.792,64.629,64.450,64.255,63.970,63.595,62.387],
+  '50/50-2800':[65.149,64.973,64.952,64.955,64.933,65.156,64.981,64.913,64.824,64.661,64.484,64.289,64.004,63.629,62.420],
+};
+const SENS = { pct:[0,5,10,15,20,25,30,35,40,45,50],
+  2600:[62.106,62.130,62.156,62.182,62.209,62.236,62.265,62.294,62.324,62.355,62.387],
+  2800:[62.114,62.140,62.168,62.196,62.225,62.255,62.286,62.318,62.351,62.385,62.420] };
+let sensOverride = null; // level for SS Cm 1 when slider is used
+
+const COL = {green:'#3ecf72', fuchsia:'#e04fd0', red:'#ff4d4d', na:'#8892a0'};
+function status(i, level){
+  if (level == null) return {fb:null, col:COL.na, txt:'N/A'};
+  const fb = Math.round((KEY[i] - level) * 1000);
+  const weir = (RES_ID[i] === 'PST7' || RES_ID[i] === 'PST6');
+  const lim = weir ? 100 : 500;
+  const col = fb > lim ? COL.green : fb >= 0 ? COL.fuchsia : COL.red;
+  return {fb, col, txt: fb + ' mm'};
+}
+const scenKey = () => { const s = document.getElementById('split').value; return s === 'base' ? 'base' : s + '-' + document.getElementById('ras').value; };
+function levelOf(id){
+  const i = RES_ID.indexOf(id); if (i < 0) return null;
+  if (id === 'SSCM1' && sensOverride != null) return sensOverride;
+  return RES[scenKey()][i];
+}
+
+// ---------- three setup ----------
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+app.appendChild(renderer.domElement);
+const labelR = new CSS2DRenderer();
+labelR.setSize(innerWidth, innerHeight);
+Object.assign(labelR.domElement.style, {position:'fixed', top:'0', left:'0', pointerEvents:'none'});
+app.appendChild(labelR.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d141e);
+scene.fog = new THREE.Fog(0x0d141e, 500, 1100);
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.5, 3000);
+camera.position.set(80, 230, 360);
+const fitView = () => camera.setViewOffset(innerWidth, innerHeight, -Math.min(185, innerWidth*.23), 0, innerWidth, innerHeight);
+fitView();
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(60, 20, 0);
+controls.enableDamping = true;
+
+scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x1a2230, 1.0));
+const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(150, 300, 200); scene.add(sun);
+
+// ground grid at ~ 64.0 m AOD (indicative ground)
+const grid = new THREE.GridHelper(1000, 50, 0x22324a, 0x1a2638);
+grid.position.set(50, Y(64.0) - 0.05, 0); scene.add(grid);
+const datumNote = null;
+
+// ---------- registries ----------
+const COMP = {};           // id -> {title,type,proposed,rows,note}
+const meshes = {};         // id -> [mesh]
+const labels = [];
+function reg(id, mesh){ mesh.userData.id = id; (meshes[id] ||= []).push(mesh); return mesh; }
+function mat(color, opts={}){ return new THREE.MeshStandardMaterial(Object.assign({color, roughness:.75, metalness:.05, emissive:0x000000}, opts)); }
+function label(text, pos, id, cls=''){
+  const d = document.createElement('div'); d.className = 'label ' + cls; d.textContent = text;
+  if (id) d.addEventListener('click', e => { e.stopPropagation(); select(id); });
+  const o = new CSS2DObject(d); o.position.copy(pos); scene.add(o); labels.push(o); return o;
+}
+
+// ---------- nodes (manholes) ----------
+const MH = {
+  MH7A:{t:'MH PST 7/A *', x:298, z:-22, inv:63.063, cop:65.150, w:1.5, prop:true, src:'Inverts from the civils team proposal.'},
+  MH7B:{t:'MH PST 7/B *', x:262, z:-25, inv:63.125, cop:65.025, w:1.5, prop:true, src:'Inverts from the civils team proposal.'},
+  MH7C:{t:'MH PST 7/C *', x:279, z:-11, inv:62.981, cop:65.000, w:1.5, prop:true, src:'Inverts from the civils team proposal. Modelled as an open rectangular channel.'},
+  MH7: {t:'MH PST 7 *',   x:245, z:-9,  inv:62.900, cop:65.025, w:1.5, prop:true, src:'Junction of Route 1 and Route 2 from PST 7. Inverts from the civils team proposal.'},
+  MH6A:{t:'MH PST 6/A',   x:258, z:15,  inv:63.450, cop:65.025, w:1.5, src:'O&M manual p122. In the baseline the coping was corrected to match this manhole.'},
+  MH6: {t:'MH PST 6',     x:266, z:3,   inv:63.000, cop:64.700, w:1.5, src:'O&M manual p118.'},
+  MH5: {t:'MH PST 5',     x:225, z:0,   inv:62.301, cop:64.700, w:3.0, src:'O&M manual p123. Receives PST 6 + PST 7 + half of PST 5. Upstream invert set to 62.640 to match incoming pipes.'},
+  MH4: {t:'MH PST 4',     x:180, z:0,   inv:62.066, cop:64.700, w:2.7, src:'O&M manual p118. Inflow = half of PST 5 + half of PST 4.'},
+  MH3: {t:'MH PST 3',     x:135, z:0,   inv:61.780, cop:64.500, w:2.7, src:'O&M manual p123. Ground level taken as coping.'},
+  MH2: {t:'MH PST 2',     x:90,  z:0,   inv:61.666, cop:64.300, w:2.7, src:'O&M manual p118. Ground level taken as coping.'},
+  MH1: {t:'MH PST 1',     x:45,  z:0,   inv:61.420, cop:64.000, w:2.7, src:'O&M manual p118. Inflow = half of PST 2 + half of PST 1.'},
+  MH0: {t:'MH PST 0',     x:0,   z:0,   inv:59.586, cop:64.000, w:2.7, src:'Canal crossing drawings. Inflow = half of PST 1 (1/14 of total).'},
+};
+const water = {}, caps = {}, frames = {};
+const unitBox = new THREE.BoxGeometry(1,1,1); unitBox.translate(0,.5,0);
+
+for (const [id, n] of Object.entries(MH)){
+  const w = Math.max(n.w, 1.5) * 2.0, h = Y(n.cop) - Y(n.inv);
+  const shell = reg(id, new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mat(n.prop ? 0xe0a54a : 0x8a96a6, {transparent:true, opacity:.22, depthWrite:false})));
+  shell.position.set(n.x, Y(n.inv) + h/2, n.z); scene.add(shell);
+  const fr = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, w)), new THREE.LineBasicMaterial({color:0xffffff}));
+  fr.position.copy(shell.position); scene.add(fr); frames[id] = fr;
+  const cap = reg(id, new THREE.Mesh(new THREE.BoxGeometry(w*1.25, .35, w*1.25), mat(0xffffff)));
+  cap.position.set(n.x, Y(n.cop), n.z); scene.add(cap); caps[id] = cap;
+  const wt = reg(id, new THREE.Mesh(unitBox, mat(0x3fa9f5, {transparent:true, opacity:.75})));
+  wt.scale.set(w*.92, 1, w*.92); wt.position.set(n.x, Y(n.inv), n.z); scene.add(wt); water[id] = wt;
+  label(n.t, V(n.x, n.cop + 1.6, n.z), id, n.prop ? 'prop' : '');
+  COMP[id] = {title:n.t.replace(' *',''), type:'Manhole (closed rectangular culvert in Hades)', proposed:n.prop,
+    rows:[['Invert', n.inv.toFixed(3)+' m AOD'], ['Coping (key level)', n.cop.toFixed(3)+' m AOD'], ['Plan size', n.w+' m']], note:n.src, res:true};
+}
+
+// ---------- tanks ----------
+const TANK_R = 18.9;
+const tanks = {};
+function addTank(id, cx, cz, kind){ // kind: 'ctx' | 'model' | 'prop'
+  const g = new THREE.Group(); g.position.set(cx, 0, cz); scene.add(g);
+  const c = kind === 'prop' ? 0xe0a54a : kind === 'model' ? 0x9aa7b8 : 0x55606f;
+  const op = kind === 'ctx' ? .25 : .38;
+  const wallH = Y(66.25) - Y(62.75);
+  const wall = reg(id, new THREE.Mesh(new THREE.CylinderGeometry(TANK_R+.6, TANK_R+.6, wallH, 64, 1, true), mat(c, {transparent:true, opacity:op, side:THREE.DoubleSide, depthWrite:false})));
+  wall.position.y = Y(62.75) + wallH/2; g.add(wall);
+  const coneH = Y(62.75) - Y(60.545);
+  const floor = reg(id, new THREE.Mesh(new THREE.ConeGeometry(TANK_R, coneH, 64, 1, true), mat(c, {transparent:true, opacity:op*.8, side:THREE.DoubleSide, depthWrite:false})));
+  floor.rotation.x = Math.PI; floor.position.y = Y(60.545) + coneH/2; g.add(floor);
+  const surf = reg(id, new THREE.Mesh(new THREE.CircleGeometry(TANK_R - .9, 64), mat(kind === 'ctx' ? 0x2a5f8a : 0x3fa9f5, {transparent:true, opacity:.55, depthWrite:false})));
+  surf.rotation.x = -Math.PI/2; surf.position.y = Y(65.245); g.add(surf);
+  const t = {g, kind};
+  if (kind !== 'ctx'){
+    const ring = reg(id, new THREE.Mesh(new THREE.RingGeometry(TANK_R - .9, TANK_R, 96), mat(0xffffff, {side:THREE.DoubleSide})));
+    ring.rotation.x = -Math.PI/2; ring.position.y = Y(65.0); g.add(ring); t.ring = ring;
+    const pts = []; for (let a=0;a<=96;a++){ const th=a/96*Math.PI*2; pts.push(new THREE.Vector3(Math.cos(th)*(TANK_R-.9), Y(65.215), Math.sin(th)*(TANK_R-.9))); }
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0xffffff})));
+  }
+  tanks[id] = t; return t;
+}
+for (let n=1;n<=5;n++){
+  const cx = 45*n - 22.5;
+  addTank('PST'+n, cx, 38, 'ctx');
+  label('PST '+n, V(cx, 66.8, 38), 'PST'+n);
+  COMP['PST'+n] = {title:'PST '+n+' (existing)', type:'Primary settlement tank (context only)', rows:[['Outlet', 'Half to MH PST '+(n-1)+', half to MH PST '+n],['Flow', '1/7 of 3.70 m³/s = 0.529 m³/s']],
+    note:'The outlet weirs of PSTs 1–5 are not modelled in detail. The report assumes the higher flows do not harm them, because the worst routes (from PSTs 6 and 7) are modelled. Recommendation 4: model MH PST 1/A–5/A once the RAS decision is made.'};
+  // stub pipes to the two manholes
+  for (const m of ['MH'+(n-1), 'MH'+n]){
+    const a = V(cx + (m === 'MH'+n ? 8 : -8), 63.4, 38 - TANK_R*.85), b = V(MH[m].x, 62.6, MH[m].z);
+    addCyl(a, b, .35*VE, 0x55606f, 'PST'+n, .5);
+  }
+}
+addTank('PST6', 247.5, 38, 'model');
+label('PST 6', V(247.5, 67.3, 38), 'PST6', 'big');
+addTank('PST7', 282, -48, 'prop');
+label('PST 7 * (proposed)', V(282, 67.3, -48), 'PST7', 'big prop');
+COMP.PST6 = {title:'PST 6 outlet weir and launder', type:'Rectangular sharp-crested weir (Kindsvater–Carter) + launder channel', res:true,
+  rows:[['Weir crest', '65.215 m AOD'],['Weir length','118.75 m overall (37.8 m × π); castellated 100 mm gaps / 118 mm teeth, so effective = 100/218 of length'],['Launder','0.6 m wide, invert 64.650, top 66.250; modelled as 30.63 m (¼ circumference) runs'],['Flow per launder run','1/28 × 3.70 = 0.132 m³/s']],
+  note:'In the table, the "level" for a PST weir is the water level in the launder just downstream of the crest. Freeboard = crest − that level, so the weir keeps a free (unsubmerged) discharge.'};
+COMP.PST7 = {title:'PST 7 * outlet weir and launder (proposed)', type:'Weir + launder (assumed same as PST 6)', proposed:true, res:true,
+  rows:[['Weir crest','65.215 m AOD'],['Launder','0.6 m wide, invert 64.650; two outlets (Route 1 to MH 7/A, Route 2 to MH 7/B)'],['Tank','37.8 m internal diameter; floor 62.75 at wall, 60.545 at centre; top 66.25'],['Inlet','From the PST distribution chamber via inlet pipes and a bellmouth weir (PST 7 BM, 65.324 level)'],['Model result (40/60, 2600)','Launder water 65.028 at the outlet end, 65.066 at the far end; tank level 65.245']],
+  note:'Each outlet collects two quarter-runs of launder, 0.264 m³/s each. The launder water level at the outlet end minus the launder invert is the "Outlet Depth (Yl)" used on the launder sizing sheet.'};
+
+// ---------- pipes ----------
+function addCyl(a, b, r, color, id, opacity=1){
+  const dir = new THREE.Vector3().subVectors(b, a); const len = dir.length();
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 20, 1), mat(color, opacity < 1 ? {transparent:true, opacity} : {}));
+  m.position.copy(a).addScaledVector(dir, .5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.normalize());
+  if (id) reg(id, m); scene.add(m); return m;
+}
+const tankPt = (tid, toward) => { const t = tanks[tid].g.position; const d = new THREE.Vector3(toward.x - t.x, 0, toward.z - t.z).normalize(); return {x:t.x + d.x*TANK_R, z:t.z + d.z*TANK_R}; };
+const L7a = tankPt('PST7', MH.MH7A), L7b = tankPt('PST7', MH.MH7B), L6 = tankPt('PST6', MH.MH6A);
+const PIPES = [
+  ['P71_1','PST 7 Outlet Pipe 1 (Route 1) *', L7a, MH.MH7A, .5, 63.650, 63.625, 2.5, 'Pipe (ks 1.5 mm)', 'Entry 0.5, exit 1.0', true],
+  ['P71_2','PST 7 Outlet Pipe 2 (Route 1) *', MH.MH7A, MH.MH7C, .9, 63.063, 62.981, 22, 'Concrete', 'Entry 0.5, exit 1.0', true],
+  ['P7_3','PST 7 Outlet Pipe 3 *', MH.MH7C, MH.MH7, .9, 62.981, 62.900, 34, 'Concrete', 'Entry 0.5, exit 1.0', true],
+  ['P72_1','PST 7 Outlet Pipe (Route 2) *', L7b, MH.MH7B, .5, 63.650, 63.625, 2.5, 'Pipe', 'Entry 0.5, exit 1.0', true],
+  ['P72_2','PST 7 Outlet Pipe 2 (Route 2) *', MH.MH7B, MH.MH7, .9, 63.125, 62.912, 22, 'Concrete', 'Entry 0.5, exit 1.0', true],
+  ['P7_4','PST 7 Outlet Pipe 4 *', MH.MH7, MH.MH5, .9, 62.900, 62.640, 50, 'Concrete', 'Entry 0.5, 45° bend 0.3, exit 1.0', true],
+  ['P6_1','PST 6 Outlet Pipe 1', L6, MH.MH6A, .5, 63.650, 63.625, 2.5, 'Concrete', 'Entry 0.5, exit 1.0'],
+  ['P6_2','PST 6 Outlet Pipe 2', MH.MH6A, MH.MH6, .675, 63.450, 63.025, 26, 'Concrete', 'Entry 0.5, exit 1.0'],
+  ['P6_3','PST 6 Outlet Pipe 3', MH.MH6, MH.MH5, .675, 63.000, 62.640, 45, 'Pipe', 'Entry 0.5, exit 1.0'],
+  ['P5','MH PST 5 Outlet Pipe', MH.MH5, MH.MH4, 1.2, 62.301, 62.214, 46.5, 'Pipe', 'Entry 0.5, exit 1.0'],
+  ['P4','MH PST 4 Outlet Pipe', MH.MH4, MH.MH3, 1.35, 62.066, 61.900, 37.8, 'Pipe', 'Entry 0.5, exit 1.0'],
+  ['P3','MH PST 3 Outlet Pipe', MH.MH3, MH.MH2, 1.5, 61.780, 61.666, 43.5, 'Concrete', 'Entry 0.5, exit 1.0'],
+  ['P2','MH PST 2 Outlet Pipe', MH.MH2, MH.MH1, 1.5, 61.666, 61.430, 40.7, 'Pipe', 'Entry 0.5, exit 1.0'],
+  ['P1','MH PST 1 Outlet Pipe', MH.MH1, MH.MH0, 1.5, 61.420, 61.310, 36.4, 'Pipe', 'Entry 0.5, exit 1.0'],
+  ['P0_1','MH PST 0 Outlet Pipe 1', MH.MH0, {x:-8,z:0}, 1.4, 59.586, 59.542, 3.935, 'Concrete', 'Sharp entry 0.5, 90° vertical bend 0.75'],
+  ['P0_3','MH PST 0 Outlet Pipe 3 (under canal)', {x:-8,z:0}, {x:-55,z:0}, 1.4, 53.915, 53.915, 46.85, 'Concrete', '90° vertical bend 0.75, taper DN1400:DN1800 0.075'],
+  ['P0_4','MH PST 0 Outlet Pipe 4 (to selector)', {x:-55,z:0}, {x:-166,z:0}, 1.8, 53.715, 54.310, 118.3, 'Pipe', '90° elbow 1.0, 22.5° bend 0.15, 37° bend 0.2, exit 1.0'],
+];
+for (const [id, t, a, b, d, i1, i2, L, fr, k, prop] of PIPES){
+  addCyl(V(a.x, i1 + d/2, a.z), V(b.x, i2 + d/2, b.z), d/2*VE, prop ? 0xe0a54a : 0x8a96a6, id);
+  COMP[id] = {title:t.replace(' *',''), type:'Circular conduit', proposed:!!prop,
+    rows:[['Diameter', (d*1000)+' mm'], ['Length', L+' m'], ['Invert US → DS', i1.toFixed(3)+' → '+i2.toFixed(3)+' m AOD'], ['Gradient', i1===i2?'flat':'1 in '+Math.round(L/Math.abs(i1-i2))+(i2>i1?' (adverse)':'')], ['Friction', fr==='Concrete'?'Concrete, ks 1.5 mm (Colebrook–White)':'"Pipe", ks 1.5 mm (Colebrook–White)'], ['Local losses (K)', k]],
+    note: id==='P0_4' ? 'Long pipe to the selector. The invert rises downstream (adverse fall), so it always runs full.' : id.startsWith('P0') ? 'Part of the canal crossing. The flow drops down a shaft, passes under the canal and rises again.' : ''};
+}
+// vertical shaft (Outlet Pipe 2)
+{ const h = Y(60.942) - Y(53.915);
+  const s = reg('P0_2', new THREE.Mesh(new THREE.BoxGeometry(1.4*VE, h, 1.4*VE), mat(0x8a96a6)));
+  s.position.set(-8, Y(53.915) + h/2, 0); scene.add(s);
+  COMP.P0_2 = {title:'MH PST 0 Outlet Pipe 2 (vertical drop)', type:'Closed rectangular culvert (models a vertical pipe)', rows:[['Size','1.4 m'],['Invert','53.915 m AOD'],['Soffit','60.942 m AOD (59.542 + 1.4)']], note:'Used to show the vertical pipe as it drops below the canal.'};
+}
+// canal (decorative)
+{ const c = reg('CANAL', new THREE.Mesh(new THREE.BoxGeometry(24, Y(60.2)-Y(57.5), 160), mat(0x2b7fbf, {transparent:true, opacity:.35, depthWrite:false})));
+  c.position.set(-30, (Y(60.2)+Y(57.5))/2, 0); scene.add(c);
+  label('Canal (schematic)', V(-30, 61.5, 60), 'CANAL');
+  COMP.CANAL = {title:'Canal crossing', type:'Context only', rows:[['Pipe under canal','DN1400, invert 53.915, 46.85 m long']], note:'The canal is drawn only to show why the pipe drops. Its levels are illustrative and not from the report.'};
+}
+
+// ---------- selector / ASP structures ----------
+function box(id, cx, cz, lx, lz, l0, l1, color, opacity=.35){
+  const h = Y(l1) - Y(l0);
+  const m = reg(id, new THREE.Mesh(new THREE.BoxGeometry(lx, h, lz), mat(color, {transparent:true, opacity, depthWrite:false})));
+  m.position.set(cx, Y(l0) + h/2, cz); scene.add(m);
+  const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({color:0x9fb3cc}));
+  e.position.copy(m.position); scene.add(e); return m;
+}
+box('SSCM1', -167.5, 0, 3, 3.85, 53.8, 62.35, 0x8a96a6);
+{ const w = reg('SSCM1', new THREE.Mesh(unitBox, mat(0x3fa9f5, {transparent:true, opacity:.75})));
+  w.scale.set(2.8, 1, 3.6); w.position.set(-167.5, Y(53.8), 0); scene.add(w); water.SSCM1 = w;
+  const cap = reg('SSCM1', new THREE.Mesh(new THREE.BoxGeometry(3.6, .35, 4.4), mat(0xffffff))); cap.position.set(-167.5, Y(62.35), 0); scene.add(cap); caps.SSCM1 = cap; }
+// baffle with opening (two plates)
+box('BAF', -169.1, 0, .25, 3.85, 59.16, 62.35, 0xc0c8d4, .8);
+box('BAF', -169.1, 0, .25, 3.85, 53.8, 55.97, 0xc0c8d4, .8);
+box('SSCM2', -172.4, 0, 5.65, 3.0, 55.7, 62.35, 0x8a96a6);
+// the hole (orifice) – highlighted disc in the wall
+box('HOLEWALL', -175.3, 0, .3, 3.0, 55.7, 62.35, 0xc0c8d4, .6);
+{ const h = reg('HOLE', new THREE.Mesh(new THREE.CircleGeometry(.9*VE*.6, 40), mat(0xffcc33, {side:THREE.DoubleSide, emissive:0x553300})));
+  h.scale.set(1, 1/.6, 1); h.rotation.y = Math.PI/2; h.position.set(-175.5, Y(56.75), 0); scene.add(h); }
+// selector channels (serpentine)
+const CH = [['CN1',-184,0,17],['CN2',-184,-7.6,17],['CN3',-184,-15.2,17],['CN4',-188.25,-22.8,8.5]];
+for (const [id, cx, cz, L] of CH) box(id, cx, cz, L, 7.2, 55.7, 62.35, 0x7d8ea3, .22);
+box('STO', -183.8, -22.8, .4, 7.2, 55.7, 62.35, 0xc0c8d4, .6);
+box('FSCM', -182.1, -22.8, 3, 8.5, 55.7, 62.35, 0x8a96a6, .3);
+{ const w = reg('FSW', new THREE.Mesh(new THREE.BoxGeometry(.4, Y(61.359)-Y(55.7), 7.5), mat(0xffffff)));
+  w.position.set(-180.4, (Y(61.359)+Y(55.7))/2, -22.8); scene.add(w); }
+label('ASP Selector Sampling Chamber', V(-167.5, 64.2, 0), 'SSCM1', 'big');
+label('Hole to selector (orifice Ø1.8 m)', V(-175.5, 60.2, 3), 'HOLE');
+label('Selector tank channels 1–4', V(-184, 63.8, -11), 'CN1');
+label('ASP flow split weir (hydraulic break)', V(-180.4, 64.8, -26), 'FSW', 'big');
+
+Object.assign(COMP, {
+  SSCM1:{title:'ASP SS Cm 1: Selector Sampling Chamber', type:'Closed rectangular culvert', res:true,
+    rows:[['Invert','53.800 m AOD'],['Coping (key level)','62.350 m AOD'],['Size','3.85 m wide × 3.0 m long'],['Inflows here','PST effluent (3.70 m³/s), supernatant + centrate (0.115 m³/s), RAS return 1 (upstream share)']],
+    note:'This is the critical location. Freeboard here is below 500 mm in every scenario, including today’s arrangement. Higher levels here back up all the way to the PST weirs.'},
+  BAF:{title:'ASP SS Cm Baf: Sampling Chamber Baffle', type:'Rectangular orifice', rows:[['Opening','3.0 m wide × 3.19 m high'],['Top of opening','59.160 m AOD'],['Coefficient','0.599 (sharp)']], note:'Drawings p83–84.'},
+  SSCM2:{title:'ASP SS Cm 2: Sampling Chamber 2', type:'Closed rectangular culvert', rows:[['Invert','55.700'],['Coping','62.350'],['Size','3.0 m wide × 5.65 m long']], note:'Part of the sampling chamber downstream of the baffle, where the RAS mixes in.'},
+  HOLEWALL:{title:'Wall between sampling chamber and selector', type:'Structure', rows:[], note:'Holds the hole (ASP SS Cm O). Recommendation 1: make the hole bigger, or cut a notch or weir in this wall.'},
+  HOLE:{title:'ASP SS Cm O: hole into the selector', type:'Circular orifice + 0.35 m pipe (ASP SS Cm OP 1)', rows:[['Diameter (drawings)','1.800 m'],['Top of orifice','57.650 m AOD (mean 56.750)'],['Coefficient','0.594 (sharp)'],['Sensitivity run','Ø2.100 m, mean elevation 56.900']],
+    note:'The bottleneck. More RAS upstream of the selector means more flow through this hole, a higher velocity and more head loss. That raises the sampling chamber level and backs up the whole PST effluent line.'},
+  CN1:{title:'ASP Selector Tank Channel 1', type:'Open rectangular channel', rows:[['Width','7.2 m'],['Length','17 m'],['Invert / top','55.700 / 62.350'],['Losses','Two 2-piece 90° mitre elbows, K = 2.5 at each turn']], note:'Serpentine selector channels 1–4 (17, 17, 17, 8.5 m). The layout is drawn schematically.'},
+  CN2:{title:'ASP Selector Tank Channel 2', type:'Open rectangular channel', rows:[['Width','7.2 m'],['Length','17 m'],['Losses','K = 2.5 (two mitre elbows)']], note:''},
+  CN3:{title:'ASP Selector Tank Channel 3', type:'Open rectangular channel', rows:[['Width','7.2 m'],['Length','17 m'],['Losses','K = 2.5 (two mitre elbows)']], note:''},
+  CN4:{title:'ASP Selector Tank Channel 4', type:'Open rectangular channel', rows:[['Width','7.2 m'],['Length','8.5 m'],['Losses','K = 2.5 at upstream end']], note:''},
+  STO:{title:'ASP ST O: Selector Tank Orifice', type:'Rectangular orifice × 2', rows:[['Size','2 No. 3.0 m × 3.0 m'],['Top','58.850 m AOD'],['Coefficient','0.599']], note:'Stopgate opening modelled as an orifice. Hades warns that the downstream channel is narrower than the combined orifice width.'},
+  FSCM:{title:'ASP FS Cm: ASP Flow Split Chamber', type:'Open rectangular channel', rows:[['Width','8.5 m'],['Length','3.0 m'],['Invert','55.700']], note:'RAS return 2 (downstream share) joins here. Half the flow leaves to ASP lanes 7–12 (outflow node "ASP 7-12 Out").'},
+  FSW:{title:'ASP FS W: ASP Flow Split Weir', type:'Rectangular sharp-crested weir (Kindsvater–Carter)', rows:[['Crest','61.359 m AOD'],['Width','7.5 m'],['Flow (2600 / 2800)','3.208 / 3.308 m³/s'],['Head over weir','0.386 / 0.394 m'],['Cd','0.602']],
+    note:'The downstream end of the model. Free discharge is assumed here (assumption 5), so it is a hydraulic break and every level upstream is calculated back from this weir.'},
+});
+
+// ---------- inflow / outflow arrows ----------
+const arrows = [];
+function arrow(id, from, to, color, text, info){
+  const dir = new THREE.Vector3().subVectors(to, from); const len = dir.length();
+  const a = new THREE.ArrowHelper(dir.normalize(), from, len, color, Math.min(len*.3, 4), Math.min(len*.18, 2.4));
+  a.line.material.linewidth = 2; reg(id, a.cone); scene.add(a); arrows.push(a);
+  label(text, to.clone().lerp(from, .15).add(new THREE.Vector3(0, 2.5, 0)), id);
+  COMP[id] = info;
+}
+arrow('RAS1', V(-167.5, 70, 10), V(-167.5, 62.8, 1), 0xb07cff, 'RAS return 1 (upstream share)',
+  {title:'RAS Ret In 1: RAS returned upstream of the selector', type:'Inflow node', rows:[['Share','30% / 40% / 50% of RAS (scenario)'],['At 40%','1.04 m³/s (2600) / 1.12 m³/s (2800)']], note:'The more RAS that enters here, the more flow passes through the hole, and the higher the levels upstream.'});
+arrow('SUP', V(-158, 66, 12), V(-163, 56, 1), 0x9cdc6a, 'Supernatant + centrate 115.3 l/s',
+  {title:'Supernatant In', type:'Inflow node', rows:[['Flow','0.1153 m³/s (fixed)'],['Made up of','100 l/s supernatant pumping + 15.3 l/s centrate liquors']], note:'Assumption 4: these return flows do not change at the higher FFT.'});
+arrow('RAS2', V(-176, 70, -33), V(-181.6, 62.8, -25), 0xb07cff, 'RAS return 2 (downstream share)',
+  {title:'RAS Ret In 2: RAS returned downstream of the selector', type:'Inflow node', rows:[['Share','70% / 60% / 50% of RAS (scenario)'],['At 60%','1.56 m³/s (2600) / 1.68 m³/s (2800)']], note:'Flow added here does not pass through the hole, so it has little effect on upstream levels. That is why the report recommends putting as much RAS here as possible.'});
+arrow('OUT712', V(-182.1, 58, -28), V(-182.1, 58, -42), 0xff9a3c, 'Half to ASP lanes 7–12',
+  {title:'ASP 7-12 Out', type:'Outflow node', rows:[['Flow','50% of upstream flow']], note:'The other half passes over the flow split weir (ASP FS W).'});
+arrow('INFLOW', V(282, 80, -48), V(282, 66.6, -48), 0x6fd3ff, '0.529 m³/s per PST (3.70 ÷ 7)',
+  {title:'PST inflow (named flow "7 No PST In")', type:'Flow', rows:[['FFT','3500 l/s (up from 3241)'],['Site drainage','200 l/s'],['Total','3.70 m³/s split equally across 7 PSTs'],['Per PST','0.529 m³/s'],['Per launder quarter-run','0.132 m³/s']], note:'Assumption 1: no sludge is drawn off, so each PST’s effluent equals its inflow.'});
+{ const a = new THREE.ArrowHelper(new THREE.Vector3(0,-1,0), V(247.5, 80, 38), Y(80)-Y(66.6), 0x6fd3ff, 4, 2.4); scene.add(a); reg('INFLOW', a.cone); }
+
+// ---------- HGL tube ----------
+let hglMesh = null;
+const hglMat = new THREE.MeshBasicMaterial({color:0x4fc3ff});
+const routePts = (ids, extraStart) => ids.map(id => id);
+function buildHGL(){
+  if (hglMesh){ scene.remove(hglMesh); hglMesh.traverse(o => o.geometry && o.geometry.dispose()); }
+  hglMesh = new THREE.Group();
+  const k = scenKey();
+  const routes = [
+    [['PST7',L7a], 'MH7A','MH7C','MH7','MH5','MH4','MH3','MH2','MH1','MH0', ['SSCM1',{x:-167.5,z:0}]],
+    [['PST7',L7b], 'MH7B','MH7'],
+    [['PST6',L6], 'MH6A','MH6','MH5'],
+  ];
+  for (const r of routes){
+    const pts = [];
+    for (const item of r){
+      const id = Array.isArray(item) ? item[0] : item;
+      const p = Array.isArray(item) ? item[1] : MH[id];
+      const lv = levelOf(id); if (lv == null) continue;
+      pts.push(V(p.x, lv, p.z));
+    }
+    if (pts.length < 2) continue;
+    const path = new THREE.CurvePath(); for (let i=1;i<pts.length;i++) path.add(new THREE.LineCurve3(pts[i-1], pts[i]));
+    hglMesh.add(new THREE.Mesh(new THREE.TubeGeometry(path, pts.length*6, .35, 6, false), hglMat));
+  }
+  hglMesh.visible = document.getElementById('hgl').checked;
+  scene.add(hglMesh);
+}
+
+// ---------- apply scenario ----------
+function applyScenario(){
+  for (const id of RES_ID){
+    const lv = levelOf(id); const i = RES_ID.indexOf(id); const st = status(i, lv);
+    if (MH[id] || id === 'SSCM1'){
+      const inv = MH[id] ? MH[id].inv : 53.8;
+      const w = water[id];
+      if (lv == null){ w.visible = false; } else { w.visible = true; w.scale.y = Math.max(.01, Y(lv) - Y(inv)); }
+      caps[id].material.color.set(st.col);
+      if (frames[id]) frames[id].material.color.set(st.col);
+    }
+    if (id === 'PST7' || id === 'PST6'){
+      const t = tanks[id]; t.ring.material.color.set(st.col);
+      t.ring.position.y = lv == null ? Y(65.0) : Y(lv);
+    }
+  }
+  const base = scenKey() === 'base';
+  tanks.PST7.g.visible = !base;
+  buildHGL();
+  if (currentSel) select(currentSel, true);
+}
+
+// ---------- flow particles ----------
+const ROUTES = [];
+function route(pts, n){
+  const vs = pts.map(p => p.isVector3 ? p : V(p[0], p[1], p[2]));
+  const cum = [0]; for (let i=1;i<vs.length;i++) cum.push(cum[i-1] + vs[i].distanceTo(vs[i-1]));
+  ROUTES.push({vs, cum, len:cum[cum.length-1], n});
+}
+const c7 = tanks.PST7.g.position, c6 = tanks.PST6.g.position;
+const mhp = (id, d=.6) => [MH[id].x, MH[id].inv + d, MH[id].z];
+route([[c7.x,65.2,c7.z],[L7a.x,64.9,L7a.z], mhp('MH7A'), mhp('MH7C'), mhp('MH7'), mhp('MH5'), mhp('MH4',.8), mhp('MH3',.9), mhp('MH2',.9), mhp('MH1',.9), mhp('MH0',.9), [-8,60.3,0], [-8,54.6,0], [-55,54.6,0], [-166,55.2,0], [-167.5,56.5,0], [-172.4,56.6,0], [-175.5,56.75,0], [-192,58,0], [-192,58,-7.6], [-176,58,-7.6], [-176,58,-15.2], [-192,58,-15.2], [-192,58,-22.8], [-182,59.5,-22.8], [-180.4,61.6,-22.8], [-177,57,-22.8]], 220);
+route([[c7.x,65.2,c7.z],[L7b.x,64.9,L7b.z], mhp('MH7B'), mhp('MH7')], 20);
+route([[c6.x,65.2,c6.z],[L6.x,64.9,L6.z], mhp('MH6A'), mhp('MH6'), mhp('MH5')], 30);
+const totalP = ROUTES.reduce((s,r)=>s+r.n, 0);
+const pMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(.55, 8, 6), new THREE.MeshBasicMaterial({color:0x9be3ff}), totalP);
+scene.add(pMesh);
+const pState = []; ROUTES.forEach((r, ri) => { for (let i=0;i<r.n;i++) pState.push({ri, s:Math.random()*r.len}); });
+const tmpM = new THREE.Matrix4(), tmpV = new THREE.Vector3();
+function stepParticles(dt){
+  pState.forEach((p, i) => {
+    const r = ROUTES[p.ri]; p.s = (p.s + dt*14) % r.len;
+    let k = 1; while (k < r.cum.length-1 && r.cum[k] < p.s) k++;
+    const t = (p.s - r.cum[k-1]) / (r.cum[k] - r.cum[k-1] || 1);
+    tmpV.lerpVectors(r.vs[k-1], r.vs[k], t);
+    tmpM.makeTranslation(tmpV.x, tmpV.y, tmpV.z); pMesh.setMatrixAt(i, tmpM);
+  });
+  pMesh.instanceMatrix.needsUpdate = true;
+}
+
+// ---------- selection / info ----------
+let currentSel = null;
+const infoEl = document.getElementById('info'), infoBody = document.getElementById('infobody');
+function select(id, keep){
+  const c = COMP[id]; if (!c) return;
+  currentSel = id;
+  let rows = c.rows.slice();
+  if (c.res){
+    const i = RES_ID.indexOf(id), lv = levelOf(id), st = status(i, lv);
+    rows.push(['Scenario', document.getElementById('split').selectedOptions[0].text + (scenKey()==='base'?'':' · RAS '+document.getElementById('ras').value+' l/s') + (id==='SSCM1'&&sensOverride!=null?' (sensitivity slider)':'')]);
+    rows.push(['Predicted water level', lv == null ? 'N/A (not built in baseline)' : lv.toFixed(3)+' m AOD']);
+    rows.push(['Freeboard', `<span class="badge" style="background:${st.col}">${st.txt}</span>`]);
+  }
+  infoBody.innerHTML = `<h3>${c.title}${c.proposed?' <span style="color:#ffd79a">* proposed</span>':''}</h3><div class="t">${c.type}</div>
+    <table>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>${c.note?`<div class="note" style="margin-top:6px;font-size:11.5px;color:#b9c7d8">${c.note}</div>`:''}`;
+  infoEl.style.display = 'block';
+  if (!keep) setHighlight([id]);
+}
+document.getElementById('infox').onclick = () => { infoEl.style.display='none'; currentSel=null; };
+
+let highlighted = [];
+function setHighlight(ids){
+  for (const id of highlighted) for (const m of meshes[id]||[]) m.material.emissive && m.material.emissive.set(0x000000);
+  highlighted = ids.filter(id => meshes[id]);
+}
+
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(); let downAt = null;
+renderer.domElement.addEventListener('pointerdown', e => downAt = [e.clientX, e.clientY]);
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!downAt || Math.hypot(e.clientX-downAt[0], e.clientY-downAt[1]) > 5) return;
+  mouse.set(e.clientX/innerWidth*2-1, -e.clientY/innerHeight*2+1);
+  ray.setFromCamera(mouse, camera);
+  const all = Object.values(meshes).flat().filter(m => m.visible && m.parent && (m.parent.visible !== false));
+  const hit = ray.intersectObjects(all, false).find(h => h.object.userData.id);
+  if (hit) select(hit.object.userData.id);
+});
+
+// ---------- camera fly ----------
+let fly = null;
+function flyTo(pos, tgt){ fly = {p0:camera.position.clone(), t0:controls.target.clone(), p1:new THREE.Vector3(...pos), t1:new THREE.Vector3(...tgt), k:0, start:performance.now()}; }
+const VIEWS = {
+  all:[[40,330,480],[50,15,-10]],
+  pst:[[330,95,95],[262,28,-12]],
+  mh56:[[250,55,70],[240,26,0]],
+  trunk:[[140,90,150],[120,25,0]],
+  down:[[-60,75,150],[-90,10,0]],
+  sel:[[-150,48,40],[-180,14,-11]],
+  hole:[[-196,24,20],[-172,9,0]],
+};
+
+// ---------- sections ----------
+const setScen = (split, ras) => { document.getElementById('split').value = split; if (ras) document.getElementById('ras').value = ras; sensOverride = null; applyScenario(); };
+window.setScen = setScen;
+window.pick = id => select(id);
+window.view = v => flyTo(...VIEWS[v]);
+
+const SECTIONS = [
+ {t:'1 · Model', v:'all', hl:['PST7','FSW'], html:`
+  <h2>1 · Model: what it is for</h2>
+  <p>Esholt’s consented FFT is going up, so a <b>7th PST</b>, a new FST and a RAS upgrade are planned. The higher RAS recycle rate is taken as the worst hydraulic case.</p>
+  <p>The model checks <span class="k">freeboard</span> at two kinds of point:</p>
+  <ul><li>PST <b>outlet weir crests</b> (is the weir still discharging freely?)</li><li><b>Manhole coping levels</b> along the PST effluent line (will it flood?)</li></ul>
+  <p><b>Extent:</b> from the PST distribution chamber, through the PSTs, the effluent manholes and the canal crossing, to the selector, ending at the <b>ASP flow split weir</b>. That weir is the nearest hydraulic break downstream.</p>
+  <div class="btns"><button onclick="view('pst')">Show upstream end (PSTs)</button><button onclick="view('sel')">Show downstream end (weir)</button></div>
+  <div class="note">Based on the checked and reviewed 2021 model (Existing Esholt EBPR Baseline). Any changes follow the as-built drawings. New assets (PST 7 and its pipes) follow the civils team proposal, with conservative assumptions. They are shown in <span style="color:#ffd79a">amber</span>.</div>`},
+ {t:'2 · Assumptions', v:'all', hl:['PST1','PST2','PST3','PST4','PST5','FSW','SUP','RAS1'], html:`
+  <h2>2 · Assumptions</h2>
+  <ol>
+   <li><b>No sludge is taken from the PSTs.</b> Effluent = inflow for each tank (conservative).</li>
+   <li><b>PSTs 1–5 outlet weirs</b> (grey tanks) are assumed to be unaffected. The worst routes, from PSTs 6 and 7, are modelled.</li>
+   <li><b>ASP and selector bypass routes are not used.</b></li>
+   <li><b>Centrate and supernatant flows do not change</b> at the higher FFT.</li>
+   <li><b>Free discharge at the ASP flow split weir.</b> This gives the model its fixed downstream boundary.</li>
+  </ol>
+  <div class="btns"><button onclick="pick('PST3')">PSTs 1–5</button><button onclick="pick('SUP')">Supernatant inflow</button><button onclick="pick('FSW')">Flow split weir</button></div>`},
+ {t:'3 · Flows', v:'all', hl:['INFLOW','RAS1','RAS2','SUP','OUT712'], html:`
+  <h2>3 · Flows</h2>
+  <table><tr><th>Flow</th><th>Value</th></tr>
+   <tr><td>FFT (new)</td><td>3500 l/s (was 3241)</td></tr>
+   <tr><td>Site drainage</td><td>200 l/s</td></tr>
+   <tr><td>To PSTs</td><td>3.70 m³/s ÷ 7 = <b>0.529 m³/s each</b></td></tr>
+   <tr><td>Supernatant + centrate</td><td>100 + 15.3 = 115.3 l/s</td></tr>
+   <tr><td>RAS (Stantec)</td><td>2600 l/s</td></tr>
+   <tr><td>RAS (Yorkshire Water)</td><td>2800 l/s</td></tr></table>
+  <p><b>RAS split:</b> on 23 Oct 2026 the SCADA data and a site visit found the RAS split <b>40% upstream / 60% downstream</b> of the selector. The control valve is meant to follow effluent turbidity, but it caused problems on site, so it was fixed in position.</p>
+  <p>Each effluent manhole <b>MH PST n</b> takes half of PST n and half of PST n+1, which is 1/7 of the total. MH PST 0 takes 1/14.</p>
+  <div class="btns"><button onclick="view('pst')">PST inflows</button><button onclick="view('sel')">RAS and return inflows</button></div>`},
+ {t:'4 · Baseline', v:'trunk', hl:['MH6','MH5','MH1','SSCM1'], scen:['base'], html:`
+  <h2>4 · Results: how to read them, and the baseline</h2>
+  <p><b>Freeboard = key level − predicted water level.</b> Key level = coping (manholes) or weir crest (PSTs).</p>
+  <ul><li><span class="badge" style="background:${COL.green}">green</span> more than 500 mm (manholes), more than 100 mm (weirs)</li>
+   <li><span class="badge" style="background:${COL.fuchsia}">fuchsia</span> below the target, but no spill</li>
+   <li><span class="badge" style="background:${COL.red}">red</span> spills or floods</li></ul>
+  <p>The coloured lid on each manhole and the ring on each PST launder show the result. The <span class="k">blue line</span> is the predicted water level (HGL).</p>
+  <p><b>Baseline</b> (existing: 6 PSTs, RAS 2450 l/s, 30/70): every point has positive freeboard. MH PST 6 (492 mm), MH PST 1 (441 mm) and the sampling chamber (148 mm) are already under 500 mm.</p>
+  <div class="btns"><button onclick="setScen('base')">Show baseline</button><button onclick="pick('MH6')">MH PST 6</button><button onclick="pick('SSCM1')">Sampling chamber</button></div>`},
+ {t:'5 · With PST 7', v:'mh56', hl:['MH6','MH5','PST7','PST6'], scen:['40/60','2600'], html:`
+  <h2>5 · Results with PST 7 (three RAS splits)</h2>
+  <p>Each split is run at RAS 2600 and 2800 l/s. Switch between them and watch the lids and the blue water line move:</p>
+  <div class="btns">
+   <button onclick="setScen('30/70','2600')">30/70 · 2600</button><button onclick="setScen('30/70','2800')">30/70 · 2800</button>
+   <button onclick="setScen('40/60','2600')">40/60 · 2600</button><button onclick="setScen('40/60','2800')">40/60 · 2800</button>
+   <button onclick="setScen('50/50','2600')">50/50 · 2600</button><button onclick="setScen('50/50','2800')">50/50 · 2800</button></div>
+  <table><tr><th>Point</th><th>30/70</th><th>40/60</th><th>50/50</th></tr>
+   <tr><td>PST 7 weir</td><td>193 / 178</td><td>149 / 126</td><td>96 / 66</td></tr>
+   <tr><td>PST 6 weir</td><td>187 / 172</td><td>142 / 119</td><td>88 / 59</td></tr>
+   <tr><td>MH PST 6</td><td style="color:${COL.red}">−57 / −79</td><td style="color:${COL.red}">−117 / −144</td><td style="color:${COL.red}">−180 / −213</td></tr>
+   <tr><td>MH PST 5</td><td>31 / 10</td><td style="color:${COL.red}">−28 / −55</td><td style="color:${COL.red}">−92 / −124</td></tr>
+   <tr><td>ASP SS Cm 1</td><td>85 / 64</td><td>26 / <span style="color:${COL.red}">−1</span></td><td style="color:${COL.red}">−37 / −70</td></tr></table>
+  <div class="note">Freeboard in mm (RAS 2600 / 2800). Click any manhole for its full result in the scenario you have selected.</div>`},
+ {t:'6 · RAS sensitivity', v:'hole', hl:['SSCM1','RAS1','HOLE'], scen:['40/60'], html:`
+  <h2>6 · Freeboard at the sampling chamber vs RAS split</h2>
+  <p>The share of RAS returned <b>upstream</b> of the selector was varied from 0% to 50%. Drag the slider to see the chamber level:</p>
+  <p><input type="range" id="sens" min="0" max="10" value="8" style="width:100%"></p>
+  <p id="sensout"></p>
+  <svg id="senschart" viewBox="0 0 320 150" style="width:100%;background:#111a26;border-radius:6px"></svg>
+  <div class="note">At 40% upstream (today’s SCADA split) the chamber is at the coping with RAS 2800 (−1 mm). Each extra 5% upstream adds about 30 mm.</div>`},
+ {t:'7 · Analysis', v:'hole', hl:['HOLE','MH5','MH6','SSCM1'], scen:['40/60','2600'], html:`
+  <h2>7 · Analysis: what the results mean</h2>
+  <ul>
+   <li>The outlet weirs of the PSTs upstream keep <b>discharging freely in every scenario</b>.</li>
+   <li>They keep <b>at least 100 mm freeboard only up to 40% RAS upstream</b> (today’s split). Above that, freeboard falls below 100 mm.</li>
+   <li>The system is <b>very sensitive to where the RAS goes</b>. The main reason is the <span class="k">hole between the sampling chamber and the selector</span>. More RAS upstream means a higher velocity through the hole, more head loss, a higher level in the chamber, and less freeboard all the way back to the PST weirs.</li>
+   <li><b>MH PST 5 and MH PST 6</b> flood, or come close to flooding, in every scenario.</li>
+   <li><b>The sampling chamber</b> freeboard is below 500 mm in every scenario, including the current arrangement.</li>
+  </ul>
+  <div class="btns"><button onclick="pick('HOLE')">The hole</button><button onclick="view('mh56');pick('MH6')">MH PST 5 / 6</button></div>`},
+ {t:'8 · Recommendations', v:'hole', hl:['HOLE','HOLEWALL','MH5','MH6','RAS2','PST3'], html:`
+  <h2>8 · Recommendations</h2>
+  <ol>
+   <li><b>Enlarge the hole</b> (ASP SS Cm O / OP 1) between the sampling chamber and the selector, or <b>cut a notch or weir</b> in that wall. A Ø2.1 m sensitivity case was set up.</li>
+   <li><b>Return as much RAS as possible downstream</b> of the selector. Use process calculations to find the minimum RAS needed upstream, set it as an upper limit, and give it to operators.</li>
+   <li><b>Raise manhole copings</b> (MH PST 5, MH PST 6 and others) to restore the minimum freeboard.</li>
+   <li>Once the RAS rate and location are decided, <b>model MH PST 1/A–5/A</b> (the PST 1–5 discharge manholes, not in this model).</li>
+  </ol>
+  <div class="btns"><button onclick="view('hole');pick('HOLE')">Rec 1: hole</button><button onclick="view('sel');pick('RAS2')">Rec 2: RAS downstream</button><button onclick="view('mh56');pick('MH5')">Rec 3: copings</button><button onclick="view('trunk');pick('PST3')">Rec 4: PSTs 1–5</button></div>`},
+ {t:'9 · Network data', v:'all', hl:[], html:`
+  <h2>9 · Network data (appendix)</h2>
+  <table>
+   <tr><td>g</td><td>9.806 m/s²</td></tr>
+   <tr><td>Kinematic viscosity</td><td>1.14×10⁻⁶ m²/s (15 °C)</td></tr>
+   <tr><td>Friction</td><td>Colebrook–White: Concrete ks 1.5 mm, Pipe ks 1.5 mm, GRP ks 0.06 mm</td></tr>
+   <tr><td>Solver</td><td>Hardy-Cross, tolerance 0.0001 m, relaxation 1.5, max 750 iterations</td></tr>
+   <tr><td>Run scenarios</td><td>FFT (RAS 2600), FFT (RAS 2800)</td></tr></table>
+  <p>The appendix lists every component: its type, size, inverts, length, friction and K-losses. Click any pipe, manhole or chamber in the 3D view to see its data:</p>
+  <div class="btns">
+   <button onclick="view('pst');pick('P71_1')">PST 7 OP 1.1</button><button onclick="view('pst');pick('P7_4')">PST 7 OP 4</button>
+   <button onclick="view('trunk');pick('P5')">MH 5 outlet</button><button onclick="view('down');pick('P0_3')">Canal pipe</button>
+   <button onclick="view('down');pick('P0_4')">Pipe to selector</button><button onclick="view('sel');pick('STO')">Selector orifice</button></div>
+  <div class="note">Hades warnings: no flow in PST 7 Route 2 / PST 6 weir runs (shown as zero in the half-tank model); PST 7 inlet bellmouth weir is submerged; "DS conduit narrower than total width of multiple orifice ASP ST O".</div>`},
+];
+let cur = 0;
+const nav = document.getElementById('nav'), content = document.getElementById('content');
+SECTIONS.forEach((s, i) => { const b = document.createElement('button'); b.textContent = s.t; b.onclick = () => go(i); nav.appendChild(b); });
+function go(i){
+  cur = Math.max(0, Math.min(SECTIONS.length-1, i)); const s = SECTIONS[cur];
+  [...nav.children].forEach((b, k) => b.classList.toggle('on', k === cur));
+  content.innerHTML = s.html;
+  if (s.scen) setScen(...s.scen); else { sensOverride = null; applyScenario(); }
+  flyTo(...VIEWS[s.v]); setHighlight(s.hl);
+  if (s.t.startsWith('6')) initSens();
+}
+document.getElementById('prev').onclick = () => go(cur-1);
+document.getElementById('next').onclick = () => go(cur+1);
+
+function initSens(){
+  const sl = document.getElementById('sens'), out = document.getElementById('sensout'), svg = document.getElementById('senschart');
+  const draw = () => {
+    const ras = document.getElementById('ras').value, i = +sl.value, lv = SENS[ras][i];
+    sensOverride = lv; applyScenario();
+    const fb = Math.round((62.35 - lv)*1000), col = fb > 500 ? COL.green : fb >= 0 ? COL.fuchsia : COL.red;
+    out.innerHTML = `RAS ${ras} l/s · <b>${SENS.pct[i]}% upstream / ${100-SENS.pct[i]}% downstream</b><br>Chamber level <b>${lv.toFixed(3)}</b> m AOD · freeboard <span class="badge" style="background:${col}">${fb} mm</span>`;
+    const x = p => 30 + p/50*275, y = fb => 130 - (fb + 80)/340*115;
+    let s = `<line x1="30" x2="305" y1="${y(0)}" y2="${y(0)}" stroke="#ff4d4d" stroke-dasharray="3 3"/><text x="300" y="${y(0)-3}" fill="#ff8080" font-size="9" text-anchor="end">coping (0 mm)</text>`;
+    for (const r of ['2600','2800']){
+      const pts = SENS.pct.map((p,k) => `${x(p)},${y(Math.round((62.35-SENS[r][k])*1000))}`).join(' ');
+      s += `<polyline fill="none" stroke="${r==='2600'?'#4fc3ff':'#b07cff'}" stroke-width="2" points="${pts}"/>`;
+    }
+    s += `<circle cx="${x(SENS.pct[i])}" cy="${y(fb)}" r="4" fill="#fff"/>`;
+    for (const p of [0,10,20,30,40,50]) s += `<text x="${x(p)}" y="144" fill="#93a4bb" font-size="9" text-anchor="middle">${p}%</text>`;
+    for (const f of [0,100,200]) s += `<text x="26" y="${y(f)+3}" fill="#93a4bb" font-size="9" text-anchor="end">${f}</text>`;
+    s += `<text x="40" y="14" fill="#4fc3ff" font-size="9">— RAS 2600</text><text x="110" y="14" fill="#b07cff" font-size="9">— RAS 2800</text><text x="300" y="14" fill="#93a4bb" font-size="9" text-anchor="end">freeboard mm</text>`;
+    svg.innerHTML = s;
+  };
+  sl.oninput = draw; draw();
+}
+
+// ---------- controls ----------
+document.getElementById('split').onchange = () => { sensOverride = null; applyScenario(); };
+document.getElementById('ras').onchange = () => { if (cur === 5) initSens(); else { sensOverride = null; applyScenario(); } };
+document.getElementById('lbl').onchange = e => labelR.domElement.style.display = e.target.checked ? '' : 'none';
+document.getElementById('flow').onchange = e => pMesh.visible = e.target.checked;
+document.getElementById('hgl').onchange = e => hglMesh.visible = e.target.checked;
+addEventListener('resize', () => { camera.aspect = innerWidth/innerHeight; fitView(); renderer.setSize(innerWidth, innerHeight); labelR.setSize(innerWidth, innerHeight); });
+
+// ---------- loop ----------
+const clock = new THREE.Clock();
+function loop(){
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
+  if (fly){ fly.k = Math.min(1, (performance.now() - fly.start) / 1000); const e = 1 - Math.pow(1 - fly.k, 3);
+    camera.position.lerpVectors(fly.p0, fly.p1, e); controls.target.lerpVectors(fly.t0, fly.t1, e); if (fly.k >= 1) fly = null; }
+  const glow = (Math.sin(t*4)*.5 + .5) * .6;
+  for (const id of highlighted) for (const m of meshes[id]||[]) m.material.emissive && m.material.emissive.setRGB(glow, glow*.8, 0);
+  if (pMesh.visible) stepParticles(dt);
+  controls.update(); renderer.render(scene, camera); labelR.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+applyScenario(); go(0); loop();
+</script>
+</body>
+</html>

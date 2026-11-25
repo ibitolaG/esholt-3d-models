@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How a Primary Settlement Tank works: Esholt PST 7 in 3D</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;font-family:"Segoe UI",system-ui,sans-serif;background:#0d141e;color:#e4ebf4}
+  #side{position:fixed;left:0;top:0;bottom:0;width:370px;background:rgba(13,20,30,.95);border-right:1px solid #24334a;display:flex;flex-direction:column;z-index:5}
+  #side header{padding:14px 16px 8px;border-bottom:1px solid #24334a}
+  #side h1{font-size:16px;margin:0 0 4px}
+  .sub{font-size:12px;color:#93a4bb}
+  #nav{display:flex;flex-wrap:wrap;gap:4px;padding:10px 16px;border-bottom:1px solid #24334a}
+  #nav button{font-size:11px;padding:4px 7px;border-radius:4px;border:1px solid #33465f;background:#16212f;color:#c9d6e6;cursor:pointer}
+  #nav button.on{background:#2d6cdf;border-color:#2d6cdf;color:#fff}
+  #content{flex:1;overflow:auto;padding:12px 16px;font-size:13px;line-height:1.5}
+  #content h2{font-size:15px;margin:2px 0 8px}
+  #content ul,#content ol{padding-left:18px;margin:6px 0}
+  #content li{margin:3px 0}
+  #content table{border-collapse:collapse;width:100%;font-size:12px;margin:6px 0}
+  #content td,#content th{border:1px solid #2a3a50;padding:3px 5px;text-align:left}
+  #content th{background:#182435}
+  .k{color:#7fc4ff}
+  .note{font-size:11.5px;color:#93a4bb;border-left:3px solid #33465f;padding-left:8px;margin:8px 0}
+  .eq{font-family:Consolas,monospace;background:#111a26;border:1px solid #24334a;border-radius:4px;padding:6px 8px;margin:6px 0;font-size:12px}
+  #pager{display:flex;justify-content:space-between;padding:10px 16px;border-top:1px solid #24334a}
+  #pager button{padding:6px 14px;border-radius:4px;border:1px solid #3a5272;background:#1a2738;color:#fff;cursor:pointer}
+  #top{position:fixed;top:10px;right:12px;z-index:6;background:rgba(13,20,30,.92);border:1px solid #24334a;border-radius:8px;padding:8px 10px;font-size:12px;display:flex;gap:12px}
+  #info{position:fixed;right:12px;bottom:12px;width:320px;max-height:50vh;overflow:auto;z-index:6;background:rgba(13,20,30,.95);border:1px solid #2d6cdf;border-radius:8px;padding:10px 12px;font-size:12.5px;display:none}
+  #info h3{margin:0 0 4px;font-size:14px}
+  #info .x{position:absolute;right:8px;top:6px;cursor:pointer;color:#93a4bb}
+  #info table{width:100%;border-collapse:collapse;margin-top:4px}
+  #info td{padding:2px 4px;border-bottom:1px solid #1f2c3e;vertical-align:top}
+  #info td:first-child{color:#93a4bb;width:45%}
+  #legend{position:fixed;left:384px;bottom:12px;z-index:6;background:rgba(13,20,30,.9);border:1px solid #24334a;border-radius:8px;padding:7px 10px;font-size:11.5px;line-height:1.7}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+  .label{font-size:10.5px;padding:1px 5px;background:rgba(10,16,26,.82);border:1px solid #3a4d6a;border-radius:4px;color:#dfe8f3;white-space:nowrap;cursor:pointer;pointer-events:auto}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<aside id="side">
+  <header><h1>How a Primary Settlement Tank works</h1>
+  <div class="sub">Radial-flow PST, using the Esholt PST 7 dimensions from the Hades model and the launder sizing sheet. Vertical exaggeration ×1.5.</div></header>
+  <div id="nav"></div><div id="content"></div>
+  <div id="pager"><button id="prev">◀ Back</button><button id="next">Next ▶</button></div>
+</aside>
+<div id="top">
+  <label><input type="checkbox" id="cut" checked> Cut-away</label>
+  <label><input type="checkbox" id="anim" checked> Animate</label>
+  <label><input type="checkbox" id="lbl" checked> Labels</label>
+</div>
+<div id="info"><span class="x" id="infox">✕</span><div id="infobody"></div></div>
+<div id="legend">
+  <div><span class="dot" style="background:#7fd6ff"></span>Water path (settled sewage)</div>
+  <div><span class="dot" style="background:#b07a45"></span>Settling solids and sludge</div>
+  <div><span class="dot" style="background:#f2d14b"></span>Scum, fats and floatables</div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {CSS2DRenderer, CSS2DObject} from 'three/addons/renderers/CSS2DRenderer.js';
+
+const VE = 1.5, DATUM = 58;
+const Y = l => (l - DATUM) * VE;
+const V = (x, l, z) => new THREE.Vector3(x, Y(l), z);
+
+// ---- dimensions (PST 7 per Hades model / sizing sheet) ----
+const R = 18.9;            // internal radius (37.8 m dia)
+const TOP = 66.25, FLOOR_W = 62.75, FLOOR_C = 60.545, HOP = 58.6, TWL = 65.245;
+const CREST = 65.215, L_INV = 64.65, L_IN = 18.0, L_OUT = 18.6; // launder 0.6 m wide, 0.3 m from wall
+const BAFFLE_R = 17.3, FW_R = 3.0;
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
+renderer.localClippingEnabled = true;
+document.body.appendChild(renderer.domElement);
+const labelR = new CSS2DRenderer(); labelR.setSize(innerWidth, innerHeight);
+Object.assign(labelR.domElement.style, {position:'fixed', top:0, left:0, pointerEvents:'none'});
+document.body.appendChild(labelR.domElement);
+
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0d141e);
+const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, .1, 1000);
+camera.position.set(28, 34, 52);
+const fitView = () => camera.setViewOffset(innerWidth, innerHeight, -Math.min(185, innerWidth*.23), 0, innerWidth, innerHeight);
+fitView();
+const controls = new OrbitControls(camera, renderer.domElement); controls.target.set(0, 8, 0); controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xdbe9ff, 0x20262f, 1.0));
+const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.set(30, 60, 40); scene.add(sun);
+const ground = new THREE.Mesh(new THREE.RingGeometry(R + .35, 70, 64), new THREE.MeshStandardMaterial({color:0x2a3542, roughness:1, transparent:true, opacity:.45, depthWrite:false, side:THREE.DoubleSide}));
+ground.rotation.x = -Math.PI/2; ground.position.y = Y(66.0); scene.add(ground);
+
+const clip = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+const clipped = [];
+function mat(color, o={}){ const m = new THREE.MeshStandardMaterial(Object.assign({color, roughness:.8, metalness:.05, side:THREE.DoubleSide}, o)); return m; }
+function cmat(color, o={}){ const m = mat(color, o); m.clippingPlanes = [clip]; clipped.push(m); return m; }
+
+const COMP = {}, meshes = {}, labels = [];
+function reg(id, m){ m.userData.id = id; (meshes[id] ||= []).push(m); if (!m.parent) scene.add(m); return m; }
+function label(t, p, id){ const d = document.createElement('div'); d.className = 'label'; d.textContent = t; d.onclick = e => { e.stopPropagation(); select(id); }; const o = new CSS2DObject(d); o.position.copy(p); scene.add(o); labels.push(o); }
+
+// ---- structure ----
+const wallH = Y(TOP) - Y(FLOOR_W);
+const wall = reg('wall', new THREE.Mesh(new THREE.CylinderGeometry(R + .3, R + .3, wallH + Y(FLOOR_W) - Y(FLOOR_W - .4), 96, 1, true), cmat(0x9aa4b1)));
+wall.position.y = Y(FLOOR_W - .4) + (Y(TOP) - Y(FLOOR_W - .4))/2;
+const coneH = Y(FLOOR_W) - Y(FLOOR_C);
+const floor = reg('floor', new THREE.Mesh(new THREE.ConeGeometry(R, coneH, 96, 1, true), cmat(0x8b8f96)));
+floor.rotation.x = Math.PI; floor.position.y = Y(FLOOR_C) + coneH/2;
+const hopH = Y(FLOOR_C) - Y(HOP);
+const hopper = reg('hopper', new THREE.Mesh(new THREE.CylinderGeometry(2.4, .7, hopH, 48, 1, true), cmat(0x7b7f86)));
+hopper.position.y = Y(HOP) + hopH/2;
+// sludge blanket (thin layer above floor)
+const blanket = reg('sludge', new THREE.Mesh(new THREE.ConeGeometry(R - .2, coneH, 96, 1, true), cmat(0x6e4a2a, {transparent:true, opacity:.7})));
+blanket.rotation.x = Math.PI; blanket.position.y = Y(FLOOR_C) + coneH/2 + .35;
+const hopFill = reg('hopper', new THREE.Mesh(new THREE.CylinderGeometry(2.2, .6, hopH*.9, 32), cmat(0x5a3a20)));
+hopFill.position.y = Y(HOP) + hopH*.45;
+// water body
+const waterSide = new THREE.Mesh(new THREE.CylinderGeometry(R - .02, R - .02, Y(TWL) - Y(FLOOR_W), 96, 1, true), cmat(0x2f8fd8, {transparent:true, opacity:.18, depthWrite:false}));
+waterSide.position.y = (Y(TWL) + Y(FLOOR_W))/2; scene.add(waterSide);
+const waterTop = reg('water', new THREE.Mesh(new THREE.CircleGeometry(L_IN - .05, 96), cmat(0x3fa9f5, {transparent:true, opacity:.45, depthWrite:false})));
+waterTop.rotation.x = -Math.PI/2; waterTop.position.y = Y(TWL);
+const gap = new THREE.Mesh(new THREE.RingGeometry(L_OUT, R, 96), cmat(0x3fa9f5, {transparent:true, opacity:.45, depthWrite:false}));
+gap.rotation.x = -Math.PI/2; gap.position.y = Y(TWL); scene.add(gap);
+
+// launder (U-channel ring)
+const lH = Y(TOP) - Y(L_INV);
+const lInner = reg('launder', new THREE.Mesh(new THREE.CylinderGeometry(L_IN, L_IN, lH, 128, 1, true), cmat(0xb9c1cc)));
+lInner.position.y = Y(L_INV) + lH/2;
+const lFloor = reg('launder', new THREE.Mesh(new THREE.RingGeometry(L_IN, L_OUT, 128), cmat(0xb9c1cc)));
+lFloor.rotation.x = -Math.PI/2; lFloor.position.y = Y(L_INV);
+const lOuter = reg('launder', new THREE.Mesh(new THREE.CylinderGeometry(L_OUT, L_OUT, Y(64.95) - Y(L_INV), 128, 1, true), cmat(0xb9c1cc)));
+lOuter.position.y = (Y(64.95) + Y(L_INV))/2;
+const lWater = reg('launder', new THREE.Mesh(new THREE.RingGeometry(L_IN + .02, L_OUT - .02, 128), cmat(0x3fa9f5, {transparent:true, opacity:.7})));
+lWater.rotation.x = -Math.PI/2; lWater.position.y = Y(65.03);
+
+// V-notch weir plate on launder outer face: 815 notches at 150 mm
+{ const N = 815, pos = [], idx = [];
+  const yb = Y(64.95), yv = Y(CREST), yt = Y(CREST + .075);
+  for (let i = 0; i <= N*2; i++){
+    const th = i / (N*2) * Math.PI * 2, x = Math.cos(th) * L_OUT, z = Math.sin(th) * L_OUT;
+    pos.push(x, yb, z, x, i % 2 === 0 ? yt : yv, z);
+    if (i > 0){ const a = (i-1)*2; idx.push(a, a+1, a+2, a+1, a+3, a+2); }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  reg('weir', new THREE.Mesh(g, cmat(0xf0f3f7, {metalness:.3, roughness:.4})));
+}
+// scum baffle
+const baffle = reg('baffle', new THREE.Mesh(new THREE.CylinderGeometry(BAFFLE_R, BAFFLE_R, Y(65.6) - Y(64.85), 128, 1, true), cmat(0xd9a441)));
+baffle.position.y = (Y(65.6) + Y(64.85))/2;
+// feedwell + inlet column
+const fw = reg('feedwell', new THREE.Mesh(new THREE.CylinderGeometry(FW_R, FW_R, Y(65.8) - Y(63.6), 64, 1, true), cmat(0xc7ccd3, {transparent:true, opacity:.85})));
+fw.position.y = (Y(65.8) + Y(63.6))/2;
+const col = reg('inlet', new THREE.Mesh(new THREE.CylinderGeometry(.7, .7, Y(64.9) - Y(57.6), 32, 1, false), cmat(0x8ea0b5)));
+col.position.y = (Y(64.9) + Y(57.6))/2;
+function pipe(id, a, b, r, color, clipIt=true){
+  const d = new THREE.Vector3().subVectors(b, a), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), 24), clipIt ? cmat(color) : mat(color));
+  m.position.copy(a).addScaledVector(d, .5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d.normalize()); return reg(id, m);
+}
+pipe('inlet', V(-34, 58.0, 0), V(0, 58.0, 0), .6, 0x8ea0b5);
+pipe('desludge', V(0, HOP + .2, 0), V(30, HOP + .2, 0), .2, 0x6e4a2a);
+reg('dist', new THREE.Mesh(new THREE.BoxGeometry(5, Y(66.6) - Y(57.2), 5), mat(0x8a96a6, {transparent:true, opacity:.5}))).position.set(-36, (Y(66.6)+Y(57.2))/2, 0);
+reg('sludgeps', new THREE.Mesh(new THREE.BoxGeometry(4, Y(66.3) - Y(57.8), 4), mat(0x6e4a2a, {transparent:true, opacity:.55}))).position.set(32, (Y(66.3)+Y(57.8))/2, 0);
+// outlets: Route 1 (−z, towards MH 7/A) and Route 2 (+z, towards MH 7/B)
+for (const [s, id, mh] of [[-1, 'out1', 'MH PST 7/A'], [1, 'out2', 'MH PST 7/B']]){
+  const sump = reg(id, new THREE.Mesh(new THREE.BoxGeometry(1.6, Y(L_INV) - Y(63.5), 1.4), cmat(0xb9c1cc)));
+  sump.position.set(0, (Y(L_INV) + Y(63.5))/2, s*(L_IN + .3));
+  pipe(id, V(0, 63.9, s*(L_IN + .3)), V(0, 63.88, s*27), .25*VE, 0xe0a54a, false);
+  const m = reg(id, new THREE.Mesh(new THREE.BoxGeometry(3, Y(TOP - .9) - Y(63.0), 3), mat(0xe0a54a, {transparent:true, opacity:.5})));
+  m.position.set(0, (Y(TOP - .9) + Y(63.0))/2, s*28.5);
+  label(mh, V(0, TOP + .3, s*28.5), id);
+}
+// rotating half bridge with scraper and skimmer
+const bridge = new THREE.Group(); scene.add(bridge);
+{ const deck = new THREE.Mesh(new THREE.BoxGeometry(R + .4, .35, 1.4), mat(0x2e6fd1, {metalness:.4, roughness:.5}));
+  deck.position.set((R + .4)/2, Y(TOP) + 1.3, 0); bridge.add(deck); reg('bridge', deck);
+  for (const z of [-.7, .7]){ const rail = new THREE.Mesh(new THREE.BoxGeometry(R + .4, .08, .08), mat(0xffd23f)); rail.position.set((R+.4)/2, Y(TOP) + 2.4, z); bridge.add(rail); }
+  const carriage = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4, 1.8), mat(0x24508f)); carriage.position.set(R + .5, Y(TOP) + .6, 0); bridge.add(carriage); reg('bridge', carriage);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 1.4, 24), mat(0x24508f)); hub.position.set(0, Y(TOP) + 1.1, 0); bridge.add(hub); reg('bridge', hub);
+  // scraper arm following the floor slope
+  const slopeY = r => Y(FLOOR_C) + (Y(FLOOR_W) - Y(FLOOR_C)) * (r / R) + .35;
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(R - 1.5, .2, .2), mat(0x666e78));
+  arm.position.set((R - 1.5)/2 + 1.2, (slopeY(1.2) + slopeY(R - .3))/2 + .6, 0);
+  arm.rotation.z = Math.atan2(slopeY(R) - slopeY(0), R); bridge.add(arm); reg('scraper', arm);
+  for (let r = 2.5; r < R - .5; r += 1.6){
+    const b = new THREE.Mesh(new THREE.BoxGeometry(1.4, .55, .08), mat(0x9aa2ad)); b.position.set(r, slopeY(r) + .2, .4); b.rotation.y = -.6; bridge.add(b); reg('scraper', b);
+  }
+  for (const r of [3, R - 1.2]){ const drop = new THREE.Mesh(new THREE.BoxGeometry(.12, Y(TOP) + 1.1 - slopeY(r), .12), mat(0x666e78)); drop.position.set(r, (Y(TOP) + 1.1 + slopeY(r))/2, 0); bridge.add(drop); }
+  const skim = new THREE.Mesh(new THREE.BoxGeometry(BAFFLE_R - FW_R - .4, .5, .08), mat(0xf2d14b)); skim.position.set((BAFFLE_R + FW_R)/2, Y(TWL) + .05, -.9); skim.rotation.y = .12; bridge.add(skim); reg('skimmer', skim);
+}
+// scum box (fixed, on the baffle line)
+{ const ang = Math.PI*.75, x = Math.cos(ang)*(BAFFLE_R - .9), z = Math.sin(ang)*(BAFFLE_R - .9);
+  const sb = reg('scumbox', new THREE.Mesh(new THREE.BoxGeometry(2.2, Y(TOP) - Y(64.6), 1.4), mat(0xd9a441, {transparent:true, opacity:.85})));
+  sb.position.set(x, (Y(TOP) + Y(64.6))/2, z); sb.rotation.y = -ang + Math.PI/2;
+  label('Scum box', V(x, TOP + .8, z), 'scumbox'); }
+
+label('Inlet from PST distribution chamber', V(-30, 60.5, 0), 'inlet');
+label('Centre column and feedwell', V(0, 67.3, 0), 'feedwell');
+label('Settlement zone', V(-9, 64.2, -9), 'water');
+label('Sludge blanket on sloping floor', V(9, 61.6, -6), 'sludge');
+label('Sludge hopper', V(0, 59.5, -2.5), 'hopper');
+label('Rotating half-bridge', V(10, TOP + 3.2, 0), 'bridge');
+label('Scum baffle', V(-12.2, 66.1, -12.2), 'baffle');
+label('V-notch weir + launder', V(13.2, 66.6, -13.2), 'weir');
+label('Desludge to sludge pumping', V(22, 58.7, 0), 'desludge');
+
+// ---- component info ----
+Object.assign(COMP, {
+  wall:{t:'Tank wall', rows:[['Internal diameter','37.8 m (Hades: 39.0 − 1.2)'],['Top of wall','66.250 m AOD']], n:'The tank is circular and fed from the centre (radial flow).'},
+  floor:{t:'Sloping floor', rows:[['Floor at wall','62.750 m AOD'],['Floor at centre','60.545 m AOD'],['Fall','2.2 m, so the scraper moves sludge to the centre']], n:''},
+  hopper:{t:'Sludge hopper', rows:[['Location','Centre of the tank, under the inlet column']], n:'Collects the sludge the scraper pushes in. Hopper size is shown for illustration only.'},
+  sludge:{t:'Sludge blanket', rows:[], n:'Settled solids build a layer on the floor. The scraper blades keep it moving slowly to the hopper.'},
+  water:{t:'Settlement zone', rows:[['Top water level','65.245 m AOD (Hades, FFT)'],['Depth at wall','≈ 2.5 m'],['Depth at centre','≈ 4.7 m'],['Plan area','≈ 1122 m²'],['Volume','≈ 3600 m³']], n:'The water moves slowly outwards from the feedwell to the weir, so heavier solids have time to settle.'},
+  launder:{t:'Launder channel', rows:[['Width','0.6 m (Hades) / 0.63 m (sizing sheet)'],['Invert','64.650 m AOD'],['Top','66.250 m AOD'],['Set back from wall','0.3 m (sizing sheet)'],['Outlets','2 (Route 1 and Route 2)']], n:'Collects clarified water from the weir and carries it round to the two outlets.'},
+  weir:{t:'V-notch weir plate', rows:[['Crest','65.215 m AOD'],['Notch','90°, at 150 mm centres'],['No. of notches','815 (sizing sheet)'],['Flow per notch','2.21 m³/h'],['Head over notch','≈ 46 mm']], n:'The notches share the outflow evenly around the whole circumference, so there is no short-circuiting.'},
+  baffle:{t:'Scum baffle', rows:[['Position','Just inside the weir'],['Depth','Dips below the surface']], n:'Holds floating scum back from the weir so it cannot leave with the effluent.'},
+  feedwell:{t:'Centre column and feedwell', rows:[['Feedwell diameter','≈ 6 m (illustrative)'],['Hades','PST 7 inlet bellmouth weir (PST 7 BM), with the upstream level at 65.324']], n:'Slows and spreads the incoming jet and sends it downwards, so the tank is not disturbed.'},
+  inlet:{t:'Inlet pipe', rows:[['From','PST distribution chamber'],['Flow (FFT)','0.529 m³/s per tank (3.70 ÷ 7)']], n:'Each PST gets an equal share of the flow from the distribution chamber.'},
+  dist:{t:'PST distribution chamber', rows:[['Total flow','3.70 m³/s (FFT 3500 + site drainage 200 l/s)']], n:'The upstream end of the Hades model.'},
+  bridge:{t:'Rotating half-bridge', rows:[['Pivot','Centre column'],['Drive','Wheeled carriage on the tank wall']], n:'Carries the scraper and skimmer round the tank and gives access for operators.'},
+  scraper:{t:'Floor scraper blades', rows:[], n:'Angled blades push the sludge along the sloping floor towards the centre hopper.'},
+  skimmer:{t:'Surface skimmer', rows:[], n:'Sweeps floating scum along the baffle and into the scum box.'},
+  scumbox:{t:'Scum box', rows:[], n:'Collects the skimmed scum and drains it to the scum or sludge system.'},
+  desludge:{t:'Desludge pipe', rows:[], n:'Takes sludge from the hopper to the sludge pumps. The Hades model assumes no sludge is removed (conservative, so outflow = inflow).'},
+  sludgeps:{t:'Sludge pumping', rows:[], n:'Illustrative only.'},
+  out1:{t:'Outlet Route 1: to MH PST 7/A', rows:[['Pipe','500 mm, 2.5 m long, invert 63.650 → 63.625'],['Flow','0.264 m³/s (two quarter-launders)'],['Launder level at outlet','65.028 (RAS 2600) / 65.055 (RAS 2800)']], n:'Downstream: MH 7/A, then 900 mm pipe, MH 7/C, MH PST 7, MH PST 5. See the Hades network model.'},
+  out2:{t:'Outlet Route 2: to MH PST 7/B', rows:[['Pipe','500 mm, 2.5 m long, invert 63.650 → 63.625'],['Flow','0.264 m³/s']], n:'Downstream: MH 7/B, then 900 mm pipe, MH PST 7.'},
+});
+
+// ---- particles ----
+const tmpM = new THREE.Matrix4();
+function makeIM(n, color, size){ const m = new THREE.InstancedMesh(new THREE.SphereGeometry(size, 8, 6), new THREE.MeshBasicMaterial({color}), n); scene.add(m); return m; }
+// water: path per particle
+const NW = 420, wIM = makeIM(NW, 0x7fd6ff, .17), wP = [];
+function waterPath(th){
+  const c = Math.cos(th), s = Math.sin(th), P = (r, l) => V(r*c, l, r*s);
+  const pts = [V(-34, 58.0, 0), V(0, 58.0, 0), V(0, 64.4, 0), P(2.0, 64.6), P(2.9, 63.4), P(7, 63.2), P(13, 63.9), P(17.2, 64.2), P(18.75, 64.4), P(18.75, 65.15), P(18.6, 65.27), P(18.3, 65.0)];
+  // along launder to nearest outlet (θ = ±π/2)
+  const target = s >= 0 ? Math.PI/2 : -Math.PI/2; let a = th; if (a > Math.PI) a -= Math.PI*2;
+  const steps = 14; for (let i = 1; i <= steps; i++){ const t = a + (target - a) * i/steps; pts.push(V(18.3*Math.cos(t), 64.95, 18.3*Math.sin(t))); }
+  const sg = Math.sign(Math.sin(target)); pts.push(V(0, 63.9, sg*18.6), V(0, 63.9, sg*27));
+  const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i-1] + pts[i].distanceTo(pts[i-1]));
+  return {pts, cum, len:cum[cum.length-1]};
+}
+for (let i = 0; i < NW; i++){ const p = waterPath(Math.random()*Math.PI*2); p.s = Math.random()*p.len; wP.push(p); }
+// solids
+const NS = 260, sIM = makeIM(NS, 0xb07a45, .14), sP = [];
+const floorY = r => Y(FLOOR_C) + (Y(FLOOR_W) - Y(FLOOR_C)) * (r / R) + .4;
+function newSolid(p){ p.th = Math.random()*Math.PI*2; p.r = 2.6 + Math.random()*.5; p.y = Y(63.4); p.vr = .5 + Math.random()*1.6; p.vy = .25 + Math.random()*.5; p.state = 0; return p; }
+for (let i = 0; i < NS; i++){ const p = newSolid({}); p.r = 3 + Math.random()*13; p.y = floorY(p.r) + Math.random()*(Y(64.5) - floorY(p.r)); sP.push(p); }
+// scum
+const NC = 90, cIM = makeIM(NC, 0xf2d14b, .2), cP = [];
+for (let i = 0; i < NC; i++) cP.push({th:Math.random()*Math.PI*2, r:3 + Math.random()*14, v:.3 + Math.random()*.6});
+const tmpV = new THREE.Vector3();
+function stepParticles(dt){
+  wP.forEach((p, i) => {
+    p.s += dt * (p.s > p.cum[10] ? 3.2 : p.s < p.cum[3] ? 3.5 : 1.6);
+    if (p.s >= p.len){ Object.assign(p, waterPath(Math.random()*Math.PI*2)); p.s = 0; }
+    let k = 1; while (k < p.cum.length - 1 && p.cum[k] < p.s) k++;
+    tmpV.lerpVectors(p.pts[k-1], p.pts[k], (p.s - p.cum[k-1]) / (p.cum[k] - p.cum[k-1] || 1));
+    tmpM.makeTranslation(tmpV.x, tmpV.y, tmpV.z); wIM.setMatrixAt(i, tmpM);
+  });
+  sP.forEach((p, i) => {
+    if (p.state === 0){ p.r += p.vr*dt; p.y -= p.vy*dt; const fy = floorY(p.r); if (p.y <= fy || p.r > 17.5){ p.y = fy; p.state = 1; } }
+    else { p.r -= .45*dt; p.y = floorY(p.r); if (p.r < 1.6){ p.y -= 1.5*dt; if (p.y < Y(HOP) + .5) newSolid(p); } }
+    tmpM.makeTranslation(Math.cos(p.th)*p.r, p.y, Math.sin(p.th)*p.r); sIM.setMatrixAt(i, tmpM);
+  });
+  cP.forEach((p, i) => {
+    p.r = Math.min(BAFFLE_R - .35, p.r + p.v*dt*.6); if (p.r >= BAFFLE_R - .36) p.th += dt*.06;
+    tmpM.makeTranslation(Math.cos(p.th)*p.r, Y(TWL) + .08, Math.sin(p.th)*p.r); cIM.setMatrixAt(i, tmpM);
+  });
+  wIM.instanceMatrix.needsUpdate = sIM.instanceMatrix.needsUpdate = cIM.instanceMatrix.needsUpdate = true;
+}
+
+// ---- selection ----
+let highlighted = [];
+const infoEl = document.getElementById('info'), infoBody = document.getElementById('infobody');
+function select(id){
+  const c = COMP[id]; if (!c) return;
+  infoBody.innerHTML = `<h3>${c.t}</h3>${c.rows.length ? `<table>${c.rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>` : ''}${c.n ? `<div class="note">${c.n}</div>` : ''}`;
+  infoEl.style.display = 'block'; setHL([id]);
+}
+window.pick = select;
+document.getElementById('infox').onclick = () => infoEl.style.display = 'none';
+function setHL(ids){ for (const id of highlighted) for (const m of meshes[id] || []) m.material.emissive.set(0); highlighted = ids.filter(i => meshes[i]); }
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(); let down = null;
+renderer.domElement.addEventListener('pointerdown', e => down = [e.clientX, e.clientY]);
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+  mouse.set(e.clientX/innerWidth*2 - 1, -e.clientY/innerHeight*2 + 1); ray.setFromCamera(mouse, camera);
+  const hits = ray.intersectObjects(Object.values(meshes).flat(), false);
+  const cut = document.getElementById('cut').checked;
+  const h = hits.find(h => !(cut && h.object.material.clippingPlanes && h.point.z > 0.01));
+  if (h) select(h.object.userData.id);
+});
+
+// ---- camera ----
+let fly = null;
+function flyTo(p, t){ fly = {p0:camera.position.clone(), t0:controls.target.clone(), p1:new THREE.Vector3(...p), t1:new THREE.Vector3(...t), k:0, start:performance.now()}; }
+const VIEWS = {
+  all:[[28,34,52],[0,8,0]], inlet:[[-22,14,30],[-6,4,0]], settle:[[0,16,40],[0,7,0]], sludge:[[6,6,30],[2,2,-2]],
+  scum:[[-6,24,22],[-8,11,-10]], weir:[[8.5,18,-8.5],[13.2,10.8,-13.2]], launder:[[4,21,-4],[12.9,10.3,-12.9]], outlet:[[-16,21,-42],[0,10,-24]],
+};
+
+// ---- tour ----
+const SECTIONS = [
+ {t:'1 · What a PST does', v:'all', hl:['water'], html:`<h2>1 · What a Primary Settlement Tank does</h2>
+  <p>A PST is the first big treatment stage after screening and grit removal. It holds the sewage <b>almost still</b> for a couple of hours so that:</p>
+  <ul><li><span style="color:#b07a45">●</span> <b>heavy solids sink</b> to the floor as primary sludge</li>
+   <li><span style="color:#f2d14b">●</span> <b>fats, oils and scum float</b> to the surface</li>
+   <li><span style="color:#7fd6ff">●</span> the <b>clarified (settled) sewage</b> overflows the weirs and goes on to the activated sludge plant (ASP)</li></ul>
+  <p>It typically removes about 50–70% of the suspended solids and 25–40% of the BOD, which takes a lot of load off the ASP.</p>
+  <p>Esholt PST 7 is a <b>radial-flow</b> tank: fed at the centre, flowing outward, collected at the edge.</p>
+  <div class="note">Drag to rotate, scroll to zoom, and click any part. Use "Cut-away" to look inside.</div>`},
+ {t:'2 · Inlet & feedwell', v:'inlet', hl:['inlet','feedwell','dist'], html:`<h2>2 · Inlet, centre column and feedwell</h2>
+  <ol><li>The <b>PST distribution chamber</b> splits FFT + site drainage (3.70 m³/s) equally, giving <b>0.529 m³/s per tank</b>.</li>
+   <li>The flow runs under the tank and <b>rises up the centre column</b>.</li>
+   <li>It comes out into the <b>feedwell</b>, a ring baffle that slows the jet and sends it down. This stops the incoming flow from stirring up the tank.</li></ol>
+  <div class="note">In Hades, the PST 7 inlet includes a bellmouth weir (PST 7 BM) with its upstream level at 65.324 m AOD. Hades warns that it is submerged at FFT. Feedwell size here is for illustration.</div>`},
+ {t:'3 · Settlement', v:'settle', hl:['water'], html:`<h2>3 · Settlement zone</h2>
+  <p>Water drifts slowly outward from the feedwell towards the weir. Solids settle if their <b>settling velocity</b> is faster than the <b>upflow rate</b> (surface overflow rate):</p>
+  <div class="eq">SOR = Q / A = 1903 m³/h ÷ 1122 m² ≈ <b>1.7 m/h</b> at FFT</div>
+  <table><tr><td>Plan area (Ø37.8 m)</td><td>≈ 1122 m²</td></tr><tr><td>Water level (Hades FFT)</td><td>65.245 m AOD</td></tr>
+   <tr><td>Depth at wall / centre</td><td>≈ 2.5 m / 4.7 m</td></tr><tr><td>Volume</td><td>≈ 3600 m³</td></tr><tr><td>Retention at FFT</td><td>≈ 1.9 h</td></tr></table>
+  <div class="note">These are approximate figures, worked out from the Hades geometry (floor 62.75 at the wall, 60.545 at the centre). They are not design values.</div>`},
+ {t:'4 · Sludge', v:'sludge', hl:['sludge','scraper','hopper','desludge'], html:`<h2>4 · Sludge collection</h2>
+  <ul><li>Settled solids form a <b>sludge blanket</b> on the floor, which falls 2.2 m to the centre.</li>
+   <li>The <b>rotating half-bridge</b> drags <b>angled scraper blades</b> over the floor, moving the sludge steadily inward.</li>
+   <li>Sludge collects in the <b>centre hopper</b> and is <b>drawn off</b> to sludge pumping.</li></ul>
+  <div class="note">Hades assumption 1: no sludge is removed, so each PST's outflow equals its inflow. That is the conservative case for the effluent hydraulics.</div>`},
+ {t:'5 · Scum', v:'scum', hl:['baffle','skimmer','scumbox'], html:`<h2>5 · Scum removal</h2>
+  <ul><li>Floating material drifts outward with the surface flow.</li>
+   <li>The <b>scum baffle</b> dips below the surface just inside the weir, so the scum cannot reach the weir.</li>
+   <li>A <b>skimmer</b> on the bridge sweeps it along the baffle into the <b>scum box</b>.</li></ul>`},
+ {t:'6 · Outlet weir', v:'weir', hl:['weir'], html:`<h2>6 · V-notch outlet weir</h2>
+  <p>From the <b>launder sizing sheet</b> (CLARIFIER FFT):</p>
+  <table><tr><td>Flow per tank</td><td>1800 m³/h</td></tr><tr><td>Weir length π(D − 2a)</td><td>π × 38.94 = 122.3 m</td></tr>
+   <tr><td>Notches (90°, 150 mm)</td><td>815</td></tr><tr><td>Flow per notch</td><td>2.21 m³/h = 0.000613 m³/s</td></tr><tr><td>Cd (90°)</td><td>0.578</td></tr></table>
+  <div class="eq">Q = (8/15)·Cd·√(2g)·tan(θ/2)·h<sup>5/2</sup><br>h = [15Q / (8·Cd·√(2g)·tan45°)]<sup>2/5</sup> ≈ <b>46 mm</b></div>
+  <p><b>Freeboard</b> (Hades) = crest 65.215 − water level in the launder. At the 40/60 RAS split this is 149 mm (RAS 2600) or 126 mm (RAS 2800). Both are more than 100 mm, so the weir still <b>discharges freely</b>.</p>
+  <div class="note">Hades models the PST 6 plate as castellated (100 mm gaps), and assumes PST 7 is the same. The sizing sheet uses V-notches. Check which plate is being specified.</div>`},
+ {t:'7 · Launder', v:'launder', hl:['launder'], html:`<h2>7 · Launder channel: the sizing sheet</h2>
+  <p>Each half of the launder carries <b>Qc = Q/2</b> to an outlet. The calculation works <b>upstream from the outlet</b>:</p>
+  <div class="eq">Yc = (Qc² / g·b²)<sup>1/3</sup> = 0.252 m<br>Yo = √(2Yc³/Yl + (Yl − SL/3)²) − (2/3)SL<br>Ho = Yo + (2/3)·i·L</div>
+  <p><b>Outlet depth Yl</b> = water level just past the outlet − launder invert (64.650):</p>
+  <table><tr><th>Yl</th><th>Yo</th><th>Ho</th></tr>
+   <tr><td>0.170 (typed into sheet)</td><td>0.467</td><td>0.543</td></tr>
+   <tr><td>0.378 (Hades, RAS 2600)</td><td>0.477</td><td>0.551</td></tr>
+   <tr><td>0.405 (Hades, RAS 2800)</td><td>0.493</td><td>0.563</td></tr></table>
+  <div class="note">"Submerged" only applies if Yl &gt; Yc. Check that launder invert + Ho stays below the crest (65.215) so the notches are not drowned. Note the sheet's Qc (0.25 m³/s) is higher than Hades' 0.132 m³/s per quarter-run.</div>`},
+ {t:'8 · Outlets', v:'outlet', hl:['out1','out2'], html:`<h2>8 · Outlets and what happens downstream</h2>
+  <ul><li>Two outlets, <b>Route 1 → MH PST 7/A</b> and <b>Route 2 → MH PST 7/B</b>. Each takes two quarter-runs of launder (0.264 m³/s).</li>
+   <li>500 mm pipes, 2.5 m long, run to the manholes. 900 mm pipes then join at <b>MH PST 7</b> and continue to <b>MH PST 5</b> on the main effluent line.</li>
+   <li>The downstream water level sets the launder outlet depth and the weir freeboard. That is why the Hades model runs all the way to the ASP flow split weir.</li></ul>
+  <div class="note">Open <b>hades-network-3d.html</b> to follow this flow through the effluent line, the canal crossing and the selector.</div>`},
+];
+let cur = 0;
+const nav = document.getElementById('nav'), content = document.getElementById('content');
+SECTIONS.forEach((s, i) => { const b = document.createElement('button'); b.textContent = s.t; b.onclick = () => go(i); nav.appendChild(b); });
+function go(i){ cur = Math.max(0, Math.min(SECTIONS.length - 1, i)); const s = SECTIONS[cur];
+  [...nav.children].forEach((b, k) => b.classList.toggle('on', k === cur)); content.innerHTML = s.html; flyTo(...VIEWS[s.v]); setHL(s.hl); }
+document.getElementById('prev').onclick = () => go(cur - 1);
+document.getElementById('next').onclick = () => go(cur + 1);
+document.getElementById('cut').onchange = e => { for (const m of clipped) m.clippingPlanes = e.target.checked ? [clip] : []; };
+document.getElementById('lbl').onchange = e => labelR.domElement.style.display = e.target.checked ? '' : 'none';
+addEventListener('resize', () => { camera.aspect = innerWidth/innerHeight; fitView(); renderer.setSize(innerWidth, innerHeight); labelR.setSize(innerWidth, innerHeight); });
+
+const clock = new THREE.Clock();
+function loop(){
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
+  if (fly){ fly.k = Math.min(1, (performance.now() - fly.start) / 1000); const e = 1 - Math.pow(1 - fly.k, 3); camera.position.lerpVectors(fly.p0, fly.p1, e); controls.target.lerpVectors(fly.t0, fly.t1, e); if (fly.k >= 1) fly = null; }
+  if (document.getElementById('anim').checked){ bridge.rotation.y -= dt * .12; stepParticles(dt); }
+  const g = (Math.sin(t*4)*.5 + .5) * .55;
+  for (const id of highlighted) for (const m of meshes[id] || []) m.material.emissive.setRGB(g, g*.8, 0);
+  controls.update(); renderer.render(scene, camera); labelR.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+go(0); loop();
+</script>
+</body>
+</html>
